@@ -1,0 +1,23 @@
+
+ESTUDO DE CASO: DERMATITE ATÓPICA CANINA - PROTOCOLO 2025
+FONTE: PubMed Veterinary Archives (Simulado)
+
+RESUMO
+A dermatite atópica canina (DAC) é uma doença inflamatória e pruriginosa da pele, geneticamente predisposta. Este documento delineia o novo protocolo de tratamento "Padrão Ouro 2025" para casos refratários.
+
+DIAGNÓSTICO
+- Critérios de Favrot: Prurido responsivo a corticoide, início < 3 anos, afetando patas dianteiras/aurículas.
+- Exclusão: Sarnas, DAPP, piodermites.
+
+TRATAMENTO INOVADOR (2025)
+1. Fase de Indução:
+   - Lokivetmab (Cytopoint) mensal.
+   - Banhos com clorexidina 3% + fitoesfingosina a cada 3 dias.
+   
+2. Casos Refratários (Novidade):
+   - Uso de Oclacitinib combinado com Imunoterapia Específica (ASIT).
+   - Dieta de eliminação com proteína hidrolisada por 8 semanas OBRIGATÓRIA.
+
+ALERTA:
+Evitar uso prolongado de prednisona devido aos efeitos colaterais hepáticos observados no estudo coorte 2024.
+Para Gatos: O protocolo difere. Usar Ciclosporina como primeira linha.

@@ -1,0 +1,9 @@
+
+{
+  "name": "Gestor Vetsmart - Gestão Veterinária Inteligente",
+  "description": "Sistema independente do ecossistema Gestor da IT2A para clínicas veterinárias e pet shops com IA integrada para automação de prontuários, planos de cuidados e previsão de estoque.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
