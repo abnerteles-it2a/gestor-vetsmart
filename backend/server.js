@@ -953,6 +953,11 @@ app.post('/api/ai/care-plan', authenticateToken, async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`🚀 Servidor rodando na porta ${port}`);
-});
+// Vercel Serverless Check
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    app.listen(port, () => {
+        console.log(`🚀 Servidor rodando na porta ${port}`);
+    });
+}
+
+export default app;

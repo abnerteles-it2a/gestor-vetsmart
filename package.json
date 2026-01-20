@@ -10,8 +10,16 @@
     "sync-docs": "node backend/scripts/init-knowledge-base.js"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.18.0",
+    "@google-cloud/vertexai": "^1.10.0",
     "@google/genai": "^1.35.0",
     "axios": "^1.13.2",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.17.2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "recharts": "^3.6.0"

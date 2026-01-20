@@ -80,6 +80,36 @@ export interface Vet {
 // Date Helpers
 const getToday = () => new Date().toISOString().split('T')[0];
 
+// --- IN-MEMORY MOCK STORE ---
+// This store allows the app to work without a backend (Demo Mode)
+const mockStore = {
+  pets: [
+    { id: '1', name: 'Thor', species: 'Cachorro', breed: 'Golden Retriever', tutor: 'Ana Silva', weight: '25kg', birth_date: '2020-05-10', photo_url: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=150&q=80', status: 'Ativo' },
+    { id: '2', name: 'Luna', species: 'Gato', breed: 'Siamês', tutor: 'Carlos Oliveira', weight: '4kg', birth_date: '2019-08-15', photo_url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=150&q=80', status: 'Ativo' },
+    { id: '3', name: 'Max', species: 'Cachorro', breed: 'Bulldog', tutor: 'Roberto Santos', weight: '12kg', birth_date: '2021-02-20', photo_url: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=150&q=80', status: 'Ativo' }
+  ],
+  appointments: [
+    { id: '1', appointment_date: `${getToday()}T09:00:00`, pet_name: 'Thor', tutor_name: 'Ana Silva', type: 'Consulta', status: 'Agendado', vet_name: 'Dr. Ricardo', reason: 'Vacinação' },
+    { id: '2', appointment_date: `${getToday()}T10:30:00`, pet_name: 'Luna', tutor_name: 'Carlos Oliveira', type: 'Exame', status: 'Em Andamento', vet_name: 'Dra. Fernanda', reason: 'Check-up' }
+  ],
+  sales: [
+    { id: '1', sale_date: `${getToday()}T08:30:00`, total_amount: 150.00, payment_method: 'Pix', status: 'Concluído' },
+    { id: '2', sale_date: `${getToday()}T09:15:00`, total_amount: 85.50, payment_method: 'Cartão Crédito', status: 'Concluído' }
+  ],
+  products: [
+    { id: '1', name: 'Vacina V10', category: 'Vacinas', stock_quantity: 45, min_stock_level: 10, price: 80.00, sku: 'VAC-001' },
+    { id: '2', name: 'Antibiótico Plus', category: 'Medicamentos', stock_quantity: 8, min_stock_level: 15, price: 45.90, sku: 'MED-002' },
+    { id: '3', name: 'Ração Premium 15kg', category: 'Alimentos', stock_quantity: 12, min_stock_level: 5, price: 280.00, sku: 'ALI-003' }
+  ],
+  tutors: [
+    { id: '1', name: 'Ana Silva', phone: '(11) 98765-4321', email: 'ana@email.com' },
+    { id: '2', name: 'Carlos Oliveira', phone: '(11) 91234-5678', email: 'carlos@email.com' }
+  ],
+  surgeries: [
+    { id: '1', pet_name: 'Thor', tutor_name: 'Ana Silva', procedure_name: 'Castração', vet_name: 'Dr. Ricardo', surgery_date: `${getToday()}T14:00:00`, status: 'Agendado', checklist: { jejum: true, exames: true, termo: true, anestesia: false } }
+  ]
+};
+
 class MockDataService {
   
   // PETS
@@ -105,16 +135,30 @@ class MockDataService {
         photoUrl: p.photo_url || 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80'
       }));
     } catch (error) {
-      console.error('Error fetching pets, falling back to empty list', error);
-      return [];
+      console.warn('Backend unavailable, using mock data for Pets');
+      return mockStore.pets.map(p => ({
+        id: p.id,
+        name: p.name,
+        species: p.species,
+        breed: p.breed,
+        tutor: p.tutor,
+        age: this.calculateAge(p.birth_date),
+        weight: p.weight,
+        status: p.status,
+        phone: '(11) 99999-9999',
+        email: 'mock@email.com',
+        visitsThisYear: 5,
+        lastVisit: getToday(),
+        nextAppointment: null,
+        totalSpend: 'R$ 0,00',
+        plan: 'Premium',
+        photoUrl: p.photo_url
+      }));
     }
   }
 
   async addPet(pet: Omit<Pet, 'id'>): Promise<Pet> {
     try {
-        // Map UI Pet to API Pet
-        // We need tutor_id. The UI passes tutor name. This is a gap.
-        // For now, we'll try to find a tutor or use a default.
         const apiPet = {
             name: pet.name,
             species: pet.species,
@@ -130,8 +174,21 @@ class MockDataService {
             id: newPet.id.toString()
         };
     } catch (e) {
-        console.error('Error adding pet', e);
-        throw e;
+        console.warn('Backend unavailable, adding to mock store');
+        const newId = (mockStore.pets.length + 1).toString();
+        const newPet = {
+          id: newId,
+          name: pet.name,
+          species: pet.species,
+          breed: pet.breed,
+          tutor: pet.tutor || 'Tutor Mock',
+          weight: pet.weight,
+          birth_date: pet.birthDate || getToday(),
+          photo_url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=150&q=80',
+          status: 'Ativo'
+        };
+        mockStore.pets.push(newPet);
+        return { ...pet, id: newId };
     }
   }
 
@@ -153,8 +210,13 @@ class MockDataService {
             age: pet.birthDate ? this.calculateAge(pet.birthDate) : (pet.age || 'N/A'),
         } as Pet;
     } catch (e) {
-        console.error('Error updating pet', e);
-        throw e;
+        console.warn('Backend unavailable, updating mock store');
+        const index = mockStore.pets.findIndex(p => p.id === id);
+        if (index !== -1) {
+            mockStore.pets[index] = { ...mockStore.pets[index], ...pet };
+            return { ...mockStore.pets[index] } as any;
+        }
+        return pet as Pet;
     }
   }
 
@@ -176,8 +238,20 @@ class MockDataService {
             type: a.type
         }));
     } catch (error) {
-        console.error('Error fetching appointments', error);
-        return [];
+        console.warn('Backend unavailable, using mock appointments');
+        return mockStore.appointments.map(a => ({
+            id: a.id,
+            date: a.appointment_date.split('T')[0],
+            time: new Date(a.appointment_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            pet: a.pet_name,
+            species: 'Canino',
+            tutor: a.tutor_name,
+            service: a.reason,
+            status: a.status,
+            room: 'Sala 1',
+            vet: a.vet_name,
+            type: a.type
+        }));
     }
   }
 
@@ -197,8 +271,19 @@ class MockDataService {
               id: newApt.id.toString()
           };
       } catch (e) {
-          console.error('Error adding appointment', e);
-          throw e;
+          console.warn('Backend unavailable, adding mock appointment');
+          const newId = (mockStore.appointments.length + 1).toString();
+          mockStore.appointments.push({
+              id: newId,
+              appointment_date: `${apt.date}T${apt.time}:00`,
+              pet_name: apt.pet,
+              tutor_name: apt.tutor,
+              type: apt.type,
+              status: apt.status,
+              vet_name: apt.vet,
+              reason: apt.service
+          });
+          return { ...apt, id: newId };
       }
   }
 
@@ -215,14 +300,20 @@ class MockDataService {
             status: s.status
         }));
     } catch (e) {
-        console.error('Error fetching sales', e);
-        return [];
+        console.warn('Backend unavailable, using mock sales');
+        return mockStore.sales.map(s => ({
+            id: s.id,
+            date: new Date(s.sale_date).toLocaleString('pt-BR'),
+            desc: `Venda #${s.id}`,
+            value: s.total_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            payment: s.payment_method,
+            status: s.status
+        }));
     }
   }
 
   async addSale(sale: Omit<Sale, 'id'>): Promise<Sale> {
       try {
-          // Simplification for UI demo
           const apiSale = {
               user_id: 1,
               tutor_id: 1,
@@ -238,8 +329,16 @@ class MockDataService {
               id: newSale.id.toString()
           };
       } catch (e) {
-          console.error('Error adding sale', e);
-          throw e;
+          console.warn('Backend unavailable, adding mock sale');
+          const newId = (mockStore.sales.length + 1).toString();
+          mockStore.sales.push({
+              id: newId,
+              sale_date: new Date().toISOString(),
+              total_amount: parseFloat(sale.value.replace('R$', '').replace('.', '').replace(',', '.').trim()),
+              payment_method: sale.payment,
+              status: sale.status
+          });
+          return { ...sale, id: newId };
       }
   }
 
@@ -258,8 +357,17 @@ class MockDataService {
               sku: p.sku
           }));
       } catch (e) {
-          console.error('Error fetching inventory', e);
-          return [];
+          console.warn('Backend unavailable, using mock inventory');
+          return mockStore.products.map(p => ({
+              id: p.id,
+              name: p.name,
+              category: p.category,
+              stock: p.stock_quantity,
+              minStock: p.min_stock_level,
+              price: p.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+              status: p.stock_quantity <= p.min_stock_level ? (p.stock_quantity === 0 ? 'critical' : 'warning') : 'ok',
+              sku: p.sku
+          }));
       }
   }
 
@@ -279,8 +387,18 @@ class MockDataService {
               id: newProduct.id.toString()
           };
       } catch (e) {
-          console.error('Error adding product', e);
-          throw e;
+          console.warn('Backend unavailable, adding mock product');
+          const newId = (mockStore.products.length + 1).toString();
+          mockStore.products.push({
+              id: newId,
+              name: item.name,
+              category: item.category,
+              stock_quantity: item.stock,
+              min_stock_level: item.minStock,
+              price: parseFloat(item.price.replace('R$', '').replace('.', '').replace(',', '.').trim()),
+              sku: item.sku
+          });
+          return { ...item, id: newId };
       }
   }
 
@@ -291,10 +409,13 @@ class MockDataService {
           return response.data.map((v: any) => ({
               id: v.id.toString(),
               name: v.name,
-              specialty: 'Geral' // Mocked as not in Users table yet
+              specialty: 'Geral' 
           }));
       } catch (e) {
-          return [];
+          return [
+            { id: '1', name: 'Dr. Ricardo', specialty: 'Cirurgião' },
+            { id: '2', name: 'Dra. Fernanda', specialty: 'Clínica Geral' }
+          ];
       }
   }
 
@@ -306,10 +427,10 @@ class MockDataService {
               name: t.name,
               phone: t.phone,
               email: t.email,
-              pets: [] // Populate if needed
+              pets: [] 
           }));
       } catch (e) {
-          return [];
+          return mockStore.tutors.map(t => ({...t, pets: []}));
       }
   }
 
@@ -322,7 +443,9 @@ class MockDataService {
               pets: []
           };
       } catch (e) {
-          throw e;
+          const newId = (mockStore.tutors.length + 1).toString();
+          mockStore.tutors.push({ id: newId, ...tutor });
+          return { ...tutor, id: newId, pets: [] };
       }
   }
 
@@ -342,8 +465,18 @@ class MockDataService {
               checklist: s.checklist || { jejum: false, exames: false, termo: false, anestesia: false }
           }));
       } catch (e) {
-          console.error('Error fetching surgeries', e);
-          return [];
+          console.warn('Backend unavailable, using mock surgeries');
+          return mockStore.surgeries.map(s => ({
+              id: s.id,
+              petName: s.pet_name,
+              tutorName: s.tutor_name,
+              procedure: s.procedure_name,
+              vetName: s.vet_name,
+              date: s.surgery_date.split('T')[0],
+              time: new Date(s.surgery_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+              status: s.status,
+              checklist: s.checklist
+          }));
       }
   }
 
@@ -364,8 +497,19 @@ class MockDataService {
               id: newSurgery.id.toString()
           };
       } catch (e) {
-          console.error('Error adding surgery', e);
-          throw e;
+          console.warn('Backend unavailable, adding mock surgery');
+          const newId = (mockStore.surgeries.length + 1).toString();
+          mockStore.surgeries.push({
+              id: newId,
+              pet_name: surgery.petName,
+              tutor_name: surgery.tutorName,
+              procedure_name: surgery.procedure,
+              vet_name: surgery.vetName,
+              surgery_date: `${surgery.date}T${surgery.time}:00`,
+              status: surgery.status,
+              checklist: surgery.checklist
+          });
+          return { ...surgery, id: newId };
       }
   }
 
