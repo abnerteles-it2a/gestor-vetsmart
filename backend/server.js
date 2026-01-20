@@ -17,6 +17,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import { VertexAI } from '@google-cloud/vertexai';
 import { Storage } from '@google-cloud/storage';
 import fs from 'fs';
+import os from 'os';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -40,10 +41,12 @@ try {
       credentialsJson = credentialsJson.slice(1, -1);
     }
     
-    const credentialsPath = path.resolve(__dirname, 'google-credentials.json');
+    // Na Vercel, apenas /tmp é gravável
+    const tmpDir = os.tmpdir();
+    const credentialsPath = path.join(tmpDir, 'google-credentials.json');
     fs.writeFileSync(credentialsPath, credentialsJson);
     process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
-    console.log('🔑 Credenciais do Google Cloud configuradas via GOOGLE_CREDENTIALS_JSON');
+    console.log(`🔑 Credenciais do Google Cloud configuradas em ${credentialsPath}`);
   }
 
   // Configuração usando credenciais do ambiente ou ADC (Application Default Credentials)
