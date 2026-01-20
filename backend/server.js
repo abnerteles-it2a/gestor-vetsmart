@@ -864,8 +864,12 @@ app.get('/api/ai/financial-insights', authenticateToken, async (req, res) => {
 
 // 6. Clinical Note Structuring (Vertex AI)
 app.post('/api/ai/structure-clinical-notes', authenticateToken, async (req, res) => {
+    // Debug: Log para ver se entrou na rota e o estado do modelo
+    console.log('Recebida requisição em /api/ai/structure-clinical-notes');
+    
     if (!generativeModel) {
-        return res.status(503).json({ error: 'Serviço de IA não disponível.' });
+        console.error('Erro 503: generativeModel é null. Verifique as credenciais do GCP.');
+        return res.status(503).json({ error: 'Serviço de IA não disponível. Verifique as configurações do servidor.' });
     }
 
     const { pet, history, rawNotes } = req.body;
