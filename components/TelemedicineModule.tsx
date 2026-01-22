@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { openWhatsApp, generateClinicMessage } from '../utils/whatsappUtils';
 
 const TelemedicineModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'appointments' | 'history'>('appointments');
@@ -17,7 +18,8 @@ const TelemedicineModule: React.FC = () => {
       type: 'Retorno',
       image: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=150&h=150',
       symptoms: 'Acompanhamento pós-cirúrgico',
-      link: 'https://meet.jit.si/vetsmart-thor-123'
+      roomName: 'vetsmart-thor-123',
+      tutorPhone: '5511999999999'
     },
     {
       id: 2,
@@ -29,7 +31,8 @@ const TelemedicineModule: React.FC = () => {
       type: 'Primeira Consulta',
       image: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150&h=150',
       symptoms: 'Apatia e falta de apetite',
-      link: 'https://meet.jit.si/vetsmart-luna-456'
+      roomName: 'vetsmart-luna-456',
+      tutorPhone: '5511988888888'
     }
   ];
 
@@ -41,6 +44,15 @@ const TelemedicineModule: React.FC = () => {
   const handleEndCall = () => {
     setIsCallActive(false);
     setSelectedAppointment(null);
+  };
+
+  const handleSendLink = (apt: any) => {
+      const link = `https://meet.jit.si/${apt.roomName}`;
+      const message = generateClinicMessage(
+          apt.tutorName, 
+          `Sua teleconsulta para o(a) ${apt.patientName} começará em breve.\n\nAcesse o link para entrar na sala de vídeo:\n${link}\n\nPor favor, esteja pronto 5 minutos antes.`
+      );
+      openWhatsApp(apt.tutorPhone, message);
   };
 
   return (
@@ -135,8 +147,11 @@ const TelemedicineModule: React.FC = () => {
                   >
                     <i className="fas fa-video"></i> Iniciar Vídeo
                   </button>
-                  <button className="flex-1 sm:flex-none px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors text-sm font-medium">
-                    Detalhes
+                  <button 
+                    onClick={() => handleSendLink(apt)}
+                    className="flex-1 sm:flex-none px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                  >
+                    <i className="fab fa-whatsapp"></i> Enviar Link
                   </button>
                 </div>
               </div>
@@ -197,54 +212,33 @@ const TelemedicineModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Video Call Modal Simulation */}
+      {/* Video Call Modal (Jitsi Integration) */}
       {isCallActive && selectedAppointment && (
         <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
-          <header className="h-16 bg-slate-800 flex items-center justify-between px-6 border-b border-slate-700">
+          <header className="h-14 bg-slate-800 flex items-center justify-between px-4 border-b border-slate-700">
             <div className="flex items-center gap-4">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
               <div>
-                <h3 className="text-white font-bold">{selectedAppointment.patientName}</h3>
-                <p className="text-xs text-slate-400">{selectedAppointment.tutorName}</p>
+                <h3 className="text-white font-bold text-sm">{selectedAppointment.patientName}</h3>
+                <p className="text-[10px] text-slate-400">{selectedAppointment.tutorName}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-slate-300 text-sm">
-              <i className="fas fa-clock"></i> 00:00
-            </div>
-          </header>
-          
-          <main className="flex-1 relative bg-black flex items-center justify-center">
-            <div className="text-center text-slate-500">
-              <i className="fas fa-user-circle text-6xl mb-4"></i>
-              <p>Aguardando paciente entrar...</p>
-            </div>
-            
-            {/* Self view */}
-            <div className="absolute bottom-4 right-4 w-48 h-36 bg-slate-800 rounded-lg border border-slate-700 shadow-lg flex items-center justify-center">
-              <span className="text-xs text-slate-500">Você</span>
-            </div>
-          </main>
-
-          <footer className="h-20 bg-slate-800 flex items-center justify-center gap-4 px-6">
-            <button className="w-12 h-12 rounded-full bg-slate-700 text-white hover:bg-slate-600 transition-colors flex items-center justify-center text-lg">
-              <i className="fas fa-microphone-slash"></i>
-            </button>
-            <button className="w-12 h-12 rounded-full bg-slate-700 text-white hover:bg-slate-600 transition-colors flex items-center justify-center text-lg">
-              <i className="fas fa-video-slash"></i>
-            </button>
             <button 
               onClick={handleEndCall}
-              className="w-16 h-16 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center text-2xl shadow-lg shadow-red-900/50"
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors"
             >
-              <i className="fas fa-phone-slash"></i>
+              Encerrar Chamada
             </button>
-            <button className="w-12 h-12 rounded-full bg-slate-700 text-white hover:bg-slate-600 transition-colors flex items-center justify-center text-lg">
-              <i className="fas fa-desktop"></i>
-            </button>
-            <button className="w-12 h-12 rounded-full bg-slate-700 text-white hover:bg-slate-600 transition-colors flex items-center justify-center text-lg">
-              <i className="fas fa-comment-alt"></i>
-            </button>
-          </footer>
+          </header>
+          
+          <main className="flex-1 relative bg-black">
+             <iframe 
+                src={`https://meet.jit.si/${selectedAppointment.roomName}#config.prejoinPageEnabled=false&userInfo.displayName="VetSmart Veterinário"`}
+                allow="camera; microphone; fullscreen; display-capture; autoplay"
+                className="w-full h-full border-none"
+                title="Telemedicina VetSmart"
+             />
+          </main>
         </div>
       )}
     </div>

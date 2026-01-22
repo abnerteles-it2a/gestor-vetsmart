@@ -1,7 +1,21 @@
 
 import { apiService } from './api';
+import { Surgery } from '../types';
 
 // Types
+export interface MedicalRecord {
+  id: string;
+  date: string;
+  petId: string;
+  vetName: string;
+  subjective: string; // S
+  objective: string;  // O
+  assessment: string; // A
+  plan: string;       // P
+  diagnosis?: string;
+  urgency?: string;
+}
+
 export interface Pet {
   id: string;
   name: string;
@@ -21,6 +35,7 @@ export interface Pet {
   birthDate?: string;
   allergies?: string;
   photoUrl?: string;
+  medicalHistory?: MedicalRecord[];
 }
 
 export interface Appointment {
@@ -107,7 +122,21 @@ const mockStore = {
   ],
   surgeries: [
     { id: '1', pet_name: 'Thor', tutor_name: 'Ana Silva', procedure_name: 'Castração', vet_name: 'Dr. Ricardo', surgery_date: `${getToday()}T14:00:00`, status: 'Agendado', checklist: { jejum: true, exames: true, termo: true, anestesia: false } }
-  ]
+  ],
+  medicalRecords: [
+    {
+      id: '1',
+      date: '2023-12-15',
+      petId: '1',
+      vetName: 'Dr. Ricardo',
+      subjective: 'Tutor relata vômito há 2 dias.',
+      objective: 'Desidratação leve, dor abdominal.',
+      assessment: 'Gastroenterite',
+      plan: 'Fluidoterapia e antiemético.',
+      diagnosis: 'Gastroenterite',
+      urgency: 'Média'
+    }
+  ] as MedicalRecord[]
 };
 
 class MockDataService {
@@ -136,24 +165,29 @@ class MockDataService {
       }));
     } catch (error) {
       console.warn('Backend unavailable, using mock data for Pets');
-      return mockStore.pets.map(p => ({
-        id: p.id,
-        name: p.name,
-        species: p.species,
-        breed: p.breed,
-        tutor: p.tutor,
-        age: this.calculateAge(p.birth_date),
-        weight: p.weight,
-        status: p.status,
-        phone: '(11) 99999-9999',
-        email: 'mock@email.com',
-        visitsThisYear: 5,
-        lastVisit: getToday(),
-        nextAppointment: null,
-        totalSpend: 'R$ 0,00',
-        plan: 'Premium',
-        photoUrl: p.photo_url
-      }));
+      return mockStore.pets.map(p => {
+        // Find associated tutor to get real mock phone
+        const tutor = mockStore.tutors.find(t => t.name === p.tutor);
+        
+        return {
+          id: p.id,
+          name: p.name,
+          species: p.species,
+          breed: p.breed,
+          tutor: p.tutor,
+          age: this.calculateAge(p.birth_date),
+          weight: p.weight,
+          status: p.status,
+          phone: tutor ? tutor.phone : '(11) 99999-9999',
+          email: tutor ? tutor.email : 'mock@email.com',
+          visitsThisYear: 5,
+          lastVisit: getToday(),
+          nextAppointment: null,
+          totalSpend: 'R$ 0,00',
+          plan: 'Premium',
+          photoUrl: p.photo_url
+        };
+      });
     }
   }
 
@@ -550,6 +584,44 @@ class MockDataService {
         return response.data;
     } catch (e) {
         throw e;
+    }
+  }
+
+  // MEDICAL RECORDS
+  async getMedicalRecords(petId: string): Promise<MedicalRecord[]> {
+    try {
+      // In a real app, this would call apiService.getMedicalRecords(petId)
+      // For now, return from mockStore
+      return mockStore.medicalRecords.filter(r => r.petId === petId);
+    } catch (e) {
+      console.warn('Backend unavailable, using mock medical records');
+      return [];
+    }
+  }
+
+  async saveMedicalRecord(record: Omit<MedicalRecord, 'id' | 'date'>): Promise<MedicalRecord> {
+    try {
+      // In a real app, this would call apiService.createMedicalRecord(record)
+      // For now, add to mockStore
+      const newId = (mockStore.medicalRecords.length + 1).toString();
+      const newRecord = {
+        ...record,
+        id: newId,
+        date: getToday()
+      };
+      mockStore.medicalRecords.push(newRecord);
+      console.log('Medical Record Saved:', newRecord);
+      return newRecord;
+    } catch (e) {
+      console.warn('Backend unavailable, adding mock medical record');
+      const newId = (mockStore.medicalRecords.length + 1).toString();
+      const newRecord = {
+        ...record,
+        id: newId,
+        date: getToday()
+      };
+      mockStore.medicalRecords.push(newRecord);
+      return newRecord;
     }
   }
 

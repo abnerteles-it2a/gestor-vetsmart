@@ -77,12 +77,13 @@ export const apiService = {
 
   // AI Features
   getInventoryForecast: () => api.get('/ai/inventory-forecast'),
-  getSmartCampaigns: () => api.get('/ai/smart-campaigns'),
+  getSmartCampaigns: (userInstruction?: string) => api.get('/ai/smart-campaigns', { params: { userInstruction } }),
   suggestTreatment: (data: any) => api.post('/ai/suggest-treatment', data),
   getHospitalizationRound: (patients: any[]) => api.post('/ai/hospitalization-round', { patients }),
   getFinancialInsights: () => api.get('/ai/financial-insights'),
   structureClinicalNotes: (data: any) => api.post('/ai/structure-clinical-notes', data),
   getCarePlan: (data: any) => api.post('/ai/care-plan', data),
+  analyzeImage: (data: any) => api.post('/ai/analyze-image', data),
 };
 
 export default api;

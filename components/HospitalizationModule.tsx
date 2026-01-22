@@ -52,9 +52,10 @@ const HospitalizationModule: React.FC = () => {
         setRoundResult(response.data);
         setIsRoundModalOpen(true);
         addToast("Ronda Inteligente concluída!", 'success');
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
-        addToast('Erro ao realizar ronda inteligente.', 'error');
+        const errorMessage = e.response?.data?.error || e.message || 'Erro desconhecido';
+        addToast(`Erro ao realizar ronda inteligente: ${errorMessage}`, 'error');
     } finally {
         setIsProcessing(false);
     }

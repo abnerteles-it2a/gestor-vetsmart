@@ -1,0 +1,11 @@
+{
+    "patients": [
+        {
+            "name": "Thor",
+            "vitals_history": [
+                { "time": "08:00", "hr": 100, "rr": 20, "temp": 38.5 },
+                { "time": "10:00", "hr": 110, "rr": 22, "temp": 39.0 }
+            ]
+        }
+    ]
+}

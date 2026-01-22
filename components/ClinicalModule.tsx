@@ -47,8 +47,17 @@ const ClinicalModule: React.FC = () => {
       setAiResult(aiResponse);
       
       // Update fields with AI suggestions (user can edit later)
-      if (aiResponse.diagnosis) setDiagnosis(aiResponse.diagnosis);
-      if (aiResponse.treatment) setTreatment(aiResponse.treatment);
+      if (aiResponse.structured_soap?.a) {
+          setDiagnosis(aiResponse.structured_soap.a);
+      } else if (aiResponse.diagnosis) {
+          setDiagnosis(aiResponse.diagnosis);
+      }
+
+      if (aiResponse.structured_soap?.p) {
+          setTreatment(aiResponse.structured_soap.p);
+      } else if (aiResponse.treatment) {
+          setTreatment(aiResponse.treatment);
+      }
       
       addToast("Análise clínica atualizada com sucesso!", 'success');
       setActiveTab('diagnosis'); // Switch to diagnosis tab to show results
@@ -56,6 +65,9 @@ const ClinicalModule: React.FC = () => {
       console.error(error);
       if (error.response?.status === 403) {
         addToast("Sessão expirada. Faça login novamente para usar a IA.", 'error');
+      } else if (error.response?.data?.error) {
+        // Show specific error from backend (e.g. Quota Exceeded)
+        addToast(error.response.data.error, 'error');
       } else {
         addToast("Erro ao processar com IA. Verifique sua conexão.", 'error');
       }

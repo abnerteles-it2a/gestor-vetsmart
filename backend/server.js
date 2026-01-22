@@ -35,10 +35,15 @@ let generativeModelFlash = null; // Optimized for long context (RAG)
 try {
   // Handle Google Credentials from JSON string in environment variable
   if (process.env.GOOGLE_CREDENTIALS_JSON) {
-    let credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON;
-    // Remove potential backticks wrapping the JSON
-    if (credentialsJson.startsWith('`') && credentialsJson.endsWith('`')) {
-      credentialsJson = credentialsJson.slice(1, -1);
+    let credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON.trim();
+    // Remove potential backticks wrapping the JSON (common in some env setups)
+    if (credentialsJson.startsWith('`')) {
+        if (credentialsJson.endsWith('`')) {
+            credentialsJson = credentialsJson.slice(1, -1);
+        } else {
+            // Handle case where trailing backtick might be missing or separated
+            credentialsJson = credentialsJson.substring(1); 
+        }
     }
     
     // Na Vercel, apenas /tmp é gravável
@@ -52,8 +57,10 @@ try {
   // Configuração usando credenciais do ambiente ou ADC (Application Default Credentials)
   const projectId = process.env.GOOGLE_CLOUD_PROJECT;
   const location = process.env.GOOGLE_VERTEX_LOCATION || 'us-central1';
-  const modelName = process.env.GOOGLE_VERTEX_MODEL || 'gemini-2.5-flash'; // Modelo padrão
-  const flashModelName = 'gemini-2.5-flash'; // Optimized for long context (RAG)
+  // Usando Gemini 2.5 Flash (Mais recente e rápido)
+  const modelName = process.env.GOOGLE_VERTEX_MODEL || 'gemini-2.0-flash-001'; 
+  // Fallback to Flash
+  const flashModelName = 'gemini-2.0-flash-001'; 
 
   if (projectId) {
     vertexAIClient = new VertexAI({ project: projectId, location: location });
@@ -66,6 +73,72 @@ try {
   }
 } catch (error) {
   console.error('❌ Erro ao inicializar Vertex AI:', error);
+}
+
+// --- HELPER FUNCTIONS ---
+// Helper function to handle 429 errors with exponential backoff
+async function generateContentWithRetry(model, prompt, retries = 3, delay = 2000) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await model.generateContent(prompt);
+        } catch (error) {
+            // Check for 429 or other retryable errors (sometimes quota errors come with specific messages)
+            const isRetryable = error.code === 429 || 
+                               (error.message && error.message.includes('429')) ||
+                               (error.message && error.message.includes('Resource has been exhausted'));
+            
+            if (isRetryable) {
+                console.warn(`⚠️ Erro 429 (Cota excedida/Rate Limit) na tentativa ${i + 1}/${retries}. Retentando em ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; // Exponential backoff
+            } else {
+                throw error; // Throw other errors immediately
+            }
+        }
+    }
+    throw new Error(`Falha após ${retries} tentativas devido a limite de cota (429).`);
+}
+
+function parseAIJSON(text) {
+    try {
+        // Remove markdown code blocks if present
+        let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        // Find the first '{' or '[' and the last '}' or ']'
+        const firstBrace = cleanText.indexOf('{');
+        const firstBracket = cleanText.indexOf('[');
+        
+        let start = -1;
+        let end = -1;
+
+        // Determine if we are looking for an object or array
+        if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+            start = firstBrace;
+            end = cleanText.lastIndexOf('}');
+        } else if (firstBracket !== -1) {
+            start = firstBracket;
+            end = cleanText.lastIndexOf(']');
+        }
+
+        if (start !== -1 && end !== -1) {
+            cleanText = cleanText.substring(start, end + 1);
+        }
+
+        try {
+            return JSON.parse(cleanText);
+        } catch (e1) {
+            // First retry: Try to escape unescaped newlines inside strings
+            // Heuristic: Replace newlines that are NOT followed by structural characters
+            // Structural chars: { } [ ] , " (and optional whitespace)
+            console.warn('⚠️ JSON parse failed, attempting auto-repair of newlines...');
+            const repairedText = cleanText.replace(/\n(?!\s*[\{\}\[\]",])/g, '\\n');
+            return JSON.parse(repairedText);
+        }
+    } catch (e) {
+        console.error('❌ Erro ao fazer parse do JSON da IA. Texto recebido:', text);
+        console.error('Detalhe do erro:', e.message);
+        return null; // Return null to indicate failure
+    }
 }
 
 // --- RAG HELPER ---
@@ -303,43 +376,6 @@ async function ensureSchema() {
 
 // Inicializa schema ao arrancar
 ensureSchema();
-
-// Helper function to robustly parse JSON from AI response
-function parseAIJSON(text) {
-    try {
-        // Remove markdown code blocks if present
-        let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        // Find the first '{' or '[' and the last '}' or ']'
-        const firstBrace = cleanText.indexOf('{');
-        const firstBracket = cleanText.indexOf('[');
-        
-        let start = -1;
-        let end = -1;
-        let isArray = false;
-
-        // Determine if we are looking for an object or array
-        if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
-            start = firstBrace;
-            end = cleanText.lastIndexOf('}');
-        } else if (firstBracket !== -1) {
-            start = firstBracket;
-            end = cleanText.lastIndexOf(']');
-            isArray = true;
-        }
-
-        if (start !== -1 && end !== -1) {
-            cleanText = cleanText.substring(start, end + 1);
-            return JSON.parse(cleanText);
-        }
-        
-        // Fallback: try parsing the original text directly
-        return JSON.parse(text);
-    } catch (e) {
-        console.error('Erro ao fazer parse do JSON da IA:', e);
-        return null; // Return null to indicate failure
-    }
-}
 
 // --- ROUTES ---
 
@@ -637,11 +673,16 @@ app.post('/api/ai/suggest-treatment', authenticateToken, async (req, res) => {
     }
 
     prompt += `
+        FONTE DE DADOS:
+        - Utilize os documentos anexados (se houver).
+        - Utilize a BUSCA DO GOOGLE (Grounding) para verificar informações recentes, novos tratamentos ou surtos na região (Brasil).
+        
         O plano deve conter:
         1. Possíveis diagnósticos diferenciais (liste 3)
         2. Exames sugeridos
         3. Tratamento sintomático inicial recomendado (Cite protocolos dos docs se aplicável)
         4. Sinais de alerta para retorno imediato
+        5. Fontes utilizadas (mencione se veio dos docs internos ou da web)
 
         Responda em formato JSON estruturado.
     `;
@@ -654,7 +695,10 @@ app.post('/api/ai/suggest-treatment', authenticateToken, async (req, res) => {
                     { text: prompt },
                     ...knowledgeBaseFiles // Attach GCS files as multimodal input
                 ]
-            }]
+            }],
+            tools: [
+                { googleSearchRetrieval: {} } // Enable Google Search Grounding
+            ]
         };
 
         const result = await model.generateContent(request);
@@ -662,8 +706,7 @@ app.post('/api/ai/suggest-treatment', authenticateToken, async (req, res) => {
         const text = response.candidates[0].content.parts[0].text;
         
         // Tenta extrair JSON se o modelo retornar markdown
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        const jsonResponse = jsonMatch ? JSON.parse(jsonMatch[0]) : { raw_text: text };
+        const jsonResponse = parseAIJSON(text) || { raw_text: text };
 
         // Add metadata about RAG usage
         jsonResponse._meta = {
@@ -679,183 +722,304 @@ app.post('/api/ai/suggest-treatment', authenticateToken, async (req, res) => {
     }
 });
 
-// 2. Analyze Inventory Demand (Real AI)
+// 2. Analyze Inventory Demand (Predictive AI - Sales + Future Schedule)
 app.get('/api/ai/inventory-forecast', authenticateToken, async (req, res) => {
     if (!generativeModel) {
         return res.status(503).json({ error: 'Serviço de IA não disponível.' });
     }
 
     try {
-        // Busca produtos e suas vendas nos últimos 30 dias
-        const result = await pool.query(`
-            SELECT p.id, p.name, p.stock_quantity, p.min_stock_level, 
-                   COUNT(si.id) as sales_count
+        // 1. Dados Históricos (Vendas últimos 30 dias)
+        const salesData = await pool.query(`
+            SELECT p.name, p.stock_quantity, p.min_stock_level, COUNT(si.id) as sales_velocity
             FROM products p
             LEFT JOIN sale_items si ON p.id = si.product_id
             LEFT JOIN sales s ON si.sale_id = s.id
             WHERE s.sale_date > NOW() - INTERVAL '30 days' OR s.sale_date IS NULL
-            GROUP BY p.id
+            GROUP BY p.id, p.name, p.stock_quantity, p.min_stock_level
         `);
-        
-        const inventoryData = result.rows;
+
+        // 2. Demanda Futura (Agendamentos próximos 7 dias)
+        // Isso permite que a IA preveja consumo baseado no que VAI acontecer
+        const futureDemand = await pool.query(`
+            SELECT type, COUNT(*) as count 
+            FROM appointments 
+            WHERE appointment_date BETWEEN NOW() AND NOW() + INTERVAL '7 days'
+            GROUP BY type
+        `);
+
+        const context = {
+            current_stock: salesData.rows,
+            upcoming_schedule_7days: futureDemand.rows
+        };
 
         const prompt = `
-            Atue como um gerente de estoque veterinário. Analise os seguintes dados de produtos (estoque atual, mínimo e vendas nos últimos 30 dias):
-            ${JSON.stringify(inventoryData)}
+            Atue como um Gerente de Supply Chain Veterinário Sênior.
+            Analise o cruzamento entre o ESTOQUE ATUAL e a DEMANDA FUTURA (Agendamentos da semana).
 
-            Identifique quais produtos precisam de reposição urgente ou atenção.
-            Retorne um JSON com uma lista de 'predictions', onde cada item tem:
-            - productId
-            - name
-            - suggestedStock (quanto comprar)
-            - reason (curta explicação)
-            
-            Se o estoque estiver saudável, retorne uma lista vazia.
+            DADOS:
+            ${JSON.stringify(context)}
+
+            REGRAS DE NEGÓCIO:
+            - Cirurgias consomem muito material (anestésicos, luvas, fios).
+            - Consultas consomem itens básicos (vacinas, vermífugos).
+            - Se o estoque for baixo e houver alta demanda futura desse tipo de serviço, gere um ALERTA CRÍTICO.
+
+            SAÍDA ESPERADA (JSON):
+            {
+                "analysis_summary": "Resumo executivo da situação de estoque vs agenda.",
+                "critical_restock": [
+                    { "item": "Nome sugerido do item (ex: Kit Cirúrgico)", "reason": "5 Cirurgias agendadas e estoque baixo de correlatos", "suggested_qty": 10 }
+                ],
+                "waste_alert": "Algum item com estoque muito alto e pouca saída?"
+            }
         `;
 
-        const aiResult = await generativeModel.generateContent(prompt);
-        const response = await aiResult.response;
+        const result = await generativeModel.generateContent(prompt);
+        const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
         
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        const jsonResponse = jsonMatch ? JSON.parse(jsonMatch[0]) : { predictions: [] };
+        const jsonResponse = parseAIJSON(text) || { analysis_summary: 'Erro ao processar IA (Formato inválido)' };
 
         res.json(jsonResponse);
+
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Erro ao analisar estoque' });
+        console.error('Erro na Vertex AI (Inventory):', err);
+        res.status(500).json({ error: 'Erro ao gerar previsão de estoque' });
     }
 });
 
-// 3. Smart Campaigns (Vertex AI)
+// 2.1 Smart Campaigns (CRM Ativo - Retention)
 app.get('/api/ai/smart-campaigns', authenticateToken, async (req, res) => {
     if (!generativeModel) {
         return res.status(503).json({ error: 'Serviço de IA não disponível.' });
     }
 
+    // Get user instruction from query params (if any)
+    const { userInstruction } = req.query;
+
     try {
-        // Busca estatísticas de pets para inspirar campanhas
-        const result = await pool.query(`
-            SELECT species, 
-                   CASE 
-                       WHEN extract(year from age(birth_date)) >= 7 THEN 'senior'
-                       WHEN extract(year from age(birth_date)) < 1 THEN 'puppy'
-                       ELSE 'adult'
-                   END as age_group,
-                   COUNT(*) as count
-            FROM pets
-            GROUP BY species, age_group
-            ORDER BY count DESC
-            LIMIT 5
+        // Busca pets que não visitam a clínica há mais de 6 meses (Risco de Churn)
+        // E cruza com a idade para campanhas específicas (ex: Geriatria)
+        // TODO: In a real scenario, this query should be dynamic based on the user instruction if possible
+        const inactivePets = await pool.query(`
+            SELECT p.name, p.species, p.breed, p.birth_date, t.name as tutor_name
+            FROM pets p
+            JOIN tutors t ON p.tutor_id = t.id
+            WHERE p.id NOT IN (
+                SELECT pet_id FROM appointments WHERE appointment_date > NOW() - INTERVAL '6 months'
+            )
+            LIMIT 20; 
         `);
-        
-        const stats = result.rows;
 
-        const prompt = `
-            Atue como um especialista em Marketing Veterinário. Com base nestes dados demográficos dos pacientes da clínica:
-            ${JSON.stringify(stats)}
+        let prompt;
 
-            Crie 3 ideias de campanhas de marketing (email/whatsapp) altamente eficazes.
-            Retorne JSON com lista de 'campaigns', contendo:
-            - title
-            - target_audience
-            - message_brief (resumo da mensagem)
-            - estimated_conversion (estimativa %)
-        `;
+        if (userInstruction && userInstruction.trim() !== '') {
+             // --- MODE 1: User Directed Campaign ---
+             prompt = `
+                Atue como um Especialista em Marketing Veterinário.
+                O usuário (Veterinário/Gestor) solicitou criar uma campanha específica.
+                
+                OBJETIVO DO USUÁRIO: "${userInstruction}"
 
-        const aiResult = await generativeModel.generateContent(prompt);
-        const response = await aiResult.response;
+                DADOS DISPONÍVEIS (Amostra de pacientes):
+                ${JSON.stringify(inactivePets.rows)}
+
+                TAREFA:
+                1. Analise o objetivo do usuário.
+                2. Identifique qual segmento da base de dados (mesmo que hipoteticamente, se os dados acima não forem suficientes) seria o alvo ideal.
+                3. Crie o conteúdo da campanha focado nesse objetivo.
+
+                SAÍDA ESPERADA (JSON):
+                {
+                    "campaign_name": "Nome da Campanha (Baseado no objetivo)",
+                    "target_segments": [
+                        {
+                            "segment": "Público Alvo Sugerido",
+                            "rationale": "Por que esse público se encaixa no objetivo do usuário.",
+                            "whatsapp_message": "Texto da mensagem persuasiva para WhatsApp.",
+                            "suggested_discount": "Sugestão de oferta (se aplicável)"
+                        }
+                    ],
+                    "estimated_revenue_impact": "Alta/Média/Baixa"
+                }
+            `;
+        } else {
+            // --- MODE 2: AI Proactive Discovery (Default) ---
+            prompt = `
+                Atue como um Especialista em Marketing Veterinário e Retenção de Clientes.
+                Temos uma lista de pacientes "sumidos" (sem visitas há 6 meses).
+                
+                DADOS DOS PACIENTES:
+                ${JSON.stringify(inactivePets.rows)}
+
+                TAREFA:
+                1. Segmente esses pacientes (ex: Cães Idosos, Gatos Adultos).
+                2. Crie uma "Campanha Relâmpago" para trazer eles de volta.
+                3. Gere o texto da mensagem (curto, para WhatsApp) personalizado para cada segmento.
+
+                SAÍDA ESPERADA (JSON):
+                {
+                    "campaign_name": "Nome criativo da campanha",
+                    "target_segments": [
+                        {
+                            "segment": "Cães Idosos (+7 anos)",
+                            "rationale": "Precisam de checkup cardíaco/renal anual.",
+                            "whatsapp_message": "Olá [Nome Tutor]! Faz tempo que não vemos o [Nome Pet]. Nessa fase da vida, o check-up preventivo é vital. Vamos agendar?",
+                            "suggested_discount": "10% no Check-up Geriátrico"
+                        }
+                    ],
+                    "estimated_revenue_impact": "Estimativa qualitativa (Alta/Média/Baixa)"
+                }
+            `;
+        }
+
+        console.log(`📢 Gerando Campanha Inteligente (Mode: ${userInstruction ? 'User Directed' : 'Auto'})...`);
+        const request = {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+        };
+        const result = await generateContentWithRetry(generativeModel, request);
+        const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
         
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        const jsonResponse = jsonMatch ? JSON.parse(jsonMatch[0]) : { campaigns: [] };
+        const jsonResponse = parseAIJSON(text) || { campaign_name: 'Erro ao gerar campanha', target_segments: [] };
 
         res.json(jsonResponse);
 
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Erro ao gerar campanhas' });
+        console.error('Erro na Vertex AI (Campaigns):', err);
+        res.status(500).json({ error: 'Erro ao gerar campanhas inteligentes' });
     }
 });
 
-// 4. Hospitalization Smart Round (Vertex AI)
+// 4. Hospitalization Smart Round (Predictive Trend Analysis)
 app.post('/api/ai/hospitalization-round', authenticateToken, async (req, res) => {
     if (!generativeModel) {
         return res.status(503).json({ error: 'Serviço de IA não disponível.' });
     }
 
-    const { patients } = req.body; // Array of patients in hospitalization
+    const { patients } = req.body; // Array of patients with vitals history
 
     const prompt = `
-        Atue como um Chefe de Internação Veterinária. Analise a lista de pacientes internados abaixo e gere um relatório de ronda ("Smart Round"):
+        Atue como um Especialista em Terapia Intensiva Veterinária.
+        Analise os pacientes internados, focando na EVOLUÇÃO TEMPORAL dos sinais vitais (Tendências).
+
+        DADOS DOS PACIENTES:
         ${JSON.stringify(patients)}
 
-        Para cada paciente, identifique se há riscos críticos com base no status e razão da internação.
-        Retorne um JSON com:
-        - summary (string: resumo geral da internação)
-        - critical_alerts (array de strings: descreva o paciente e o risco em formato de texto. Ex: "Rex (Box 1): Risco de infecção")
-        - suggestions (array de strings: sugestões gerais para a equipe de enfermagem)
+        TAREFA:
+        1. Para cada paciente, compare os sinais vitais atuais com os anteriores.
+        2. Identifique padrões de deterioração (ex: Tríade da Sepse, Desidratação progressiva).
+        3. Gere um "Score de Risco" (1-10) e ações imediatas.
+
+        SAÍDA ESPERADA (JSON):
+        {
+            "summary": "Visão geral do plantão (ex: 'Plantão estável, atenção ao Box 2').",
+            "critical_alerts": [
+                {
+                    "name": "Rex",
+                    "bay": "Box 1",
+                    "reason": "FC subindo (100->140) + Pressão caindo. Sinais de Choque."
+                }
+            ],
+            "suggestions": [
+                "Rex: Avaliar lactato e considerar bolus de fluido.",
+                "Geral: Monitorar temperatura de todos os pacientes."
+            ]
+        }
     `;
 
     try {
-        const result = await generativeModel.generateContent(prompt);
+        console.log(`🏥 Iniciando Ronda Inteligente (Model: ${process.env.GOOGLE_VERTEX_MODEL || 'default'})...`);
+        const request = {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+        };
+        const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
         
-        const jsonResponse = parseAIJSON(text) || { summary: 'Sem dados', critical_alerts: [], suggestions: [] };
+        const jsonResponse = parseAIJSON(text) || { 
+            summary: 'Erro na análise (Formato inválido ou resposta vazia)', 
+            critical_alerts: [],
+            suggestions: []
+        };
 
         res.json(jsonResponse);
     } catch (err) {
-        console.error('Erro na Vertex AI:', err);
-        res.status(500).json({ error: 'Erro ao processar ronda inteligente' });
+        console.error('Erro na Vertex AI (Round):', err);
+        res.status(500).json({ 
+            error: `Erro ao processar ronda inteligente: ${err.message}`, 
+            details: err.message,
+            code: err.code 
+        });
     }
 });
 
-// 5. Financial Insights (Vertex AI)
+// 5. Financial Insights (Revenue Leakage Detection - "The Auditor")
 app.get('/api/ai/financial-insights', authenticateToken, async (req, res) => {
     if (!generativeModel) {
         return res.status(503).json({ error: 'Serviço de IA não disponível.' });
     }
 
     try {
-        // Fetch real sales data (last 30 days vs previous 30 days could be better, but simplified for now)
-        const salesRes = await pool.query(`
-            SELECT DATE(sale_date) as date, SUM(total_amount) as total 
-            FROM sales 
-            WHERE sale_date > NOW() - INTERVAL '30 days' 
-            GROUP BY date 
-            ORDER BY date ASC
+        // Simulação de Cruzamento: Prontuários do dia vs Vendas do dia
+        // Na vida real, faríamos JOIN entre appointments/clinical_notes e sales
+        const todayOperations = await pool.query(`
+            SELECT a.id, a.reason, p.name as pet, a.status 
+            FROM appointments a 
+            JOIN pets p ON a.pet_id = p.id
+            WHERE a.appointment_date::date = CURRENT_DATE AND a.status = 'concluido'
         `);
-        
-        // Mock expenses for now as we don't have an expenses table populated yet
-        const expensesMock = {
-            fixed: 30000,
-            variable: salesRes.rows.reduce((acc, row) => acc + (row.total * 0.4), 0) // Assume 40% cost
-        };
 
-        const financialData = {
-            daily_sales: salesRes.rows,
-            expenses: expensesMock
+        const todaySales = await pool.query(`
+            SELECT s.total_amount, s.payment_method, si.product_id 
+            FROM sales s
+            LEFT JOIN sale_items si ON s.id = si.sale_id
+            WHERE s.sale_date::date = CURRENT_DATE
+        `);
+
+        const context = {
+            clinical_activity: todayOperations.rows, // O que foi feito (ex: "Consulta + Vacina")
+            billed_items: todaySales.rows // O que foi cobrado
         };
 
         const prompt = `
-            Atue como um CFO (Chief Financial Officer) para esta clínica veterinária. Analise os dados financeiros dos últimos 30 dias:
-            ${JSON.stringify(financialData)}
+            Atue como um Auditor Financeiro Clínico.
+            Cruze a atividade clínica realizada hoje com o que foi efetivamente faturado para encontrar "Revenue Leakage" (Receita Perdida).
 
-            Gere insights estratégicos.
-            Retorne um JSON com:
-            - revenue_trend (tendência de receita: 'crescimento', 'estável', 'queda')
-            - insights (lista de strings com observações importantes)
-            - recommendations (lista de ações recomendadas para aumentar lucro ou reduzir custos)
-            - projected_revenue (previsão para o próximo mês)
+            DADOS:
+            ${JSON.stringify(context)}
+
+            REGRAS DE AUDITORIA:
+            1. Se houve "Consulta" ou "Vacina" na atividade clínica, deve haver uma venda correspondente.
+            2. Estime o valor perdido se houver discrepância.
+
+            SAÍDA ESPERADA (JSON):
+            {
+                "revenue_health": "Saudável" ou "Atenção - Perdas Detectadas",
+                "leakage_alerts": [
+                    {
+                        "description": "Paciente 'Thor' veio para Vacina V10 mas não consta venda de vacina.",
+                        "estimated_loss": "R$ 120,00",
+                        "action": "Verificar com Vet. João"
+                    }
+                ],
+                "financial_forecast": "Projeção simples baseada no volume do dia."
+            }
         `;
 
-        const result = await generativeModel.generateContent(prompt);
+        console.log(`💰 Iniciando Auditoria Financeira (Model: ${process.env.GOOGLE_VERTEX_MODEL || 'default'})...`);
+        const request = {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+        };
+        const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
         
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        const jsonResponse = jsonMatch ? JSON.parse(jsonMatch[0]) : { insights: ['Sem dados suficientes'] };
+        const jsonResponse = parseAIJSON(text) || { insights: ['Sem dados suficientes ou erro de formato'] };
 
         res.json(jsonResponse);
 
@@ -865,64 +1029,142 @@ app.get('/api/ai/financial-insights', authenticateToken, async (req, res) => {
     }
 });
 
-// 6. Clinical Note Structuring (Vertex AI)
+// 6. Clinical Note Structuring (Auto-Coding & Billing Suggestions & Owner Instructions)
 app.post('/api/ai/structure-clinical-notes', authenticateToken, async (req, res) => {
-    // Debug: Log para ver se entrou na rota e o estado do modelo
-    console.log('Recebida requisição em /api/ai/structure-clinical-notes');
+    // Use Flash model for speed and higher quota, fallback to Pro if needed
+    const modelToUse = generativeModelFlash || generativeModel;
     
-    if (!generativeModel) {
-        console.error('Erro 503: generativeModel é null. Verifique as credenciais do GCP.');
-        return res.status(503).json({ error: 'Serviço de IA não disponível. Verifique as configurações do servidor.' });
+    if (!modelToUse) {
+        return res.status(503).json({ error: 'Serviço de IA não disponível.' });
     }
 
     const { pet, history, rawNotes } = req.body;
     
-    console.log('--- AI Request Debug ---');
-    console.log('Pet:', JSON.stringify(pet));
-    console.log('Raw Notes:', rawNotes);
-    console.log('------------------------');
-
     const prompt = `
-        Atue como um Assistente Veterinário Sênior. Transforme as anotações rascunhadas abaixo em um prontuário médico profissional (SOAP).
-        
-        DADOS DO PACIENTE:
-        Espécie: ${pet.species}, Raça: ${pet.breed}, Idade: ${pet.age}
-        
-        HISTÓRICO RECENTE:
-        ${history}
-        
-        ANOTAÇÕES RASCUNHADAS (RAW):
-        "${rawNotes}"
+        Atue como um Assistente Veterinário Sênior e Especialista em Comunicação.
+        Transforme as anotações soltas (ditadas ou digitadas) em um registro clínico completo.
 
-        IMPORTANTE - REGRAS DE PRIORIDADE DE DIAGNÓSTICO:
-        1. O campo "Diagnóstico Preliminar" dentro das notas pode conter dados antigos ou incorretos.
-        2. Sua prioridade MÁXIMA é analisar a "Anamnese" e "Exame Físico".
-        3. Se a "Anamnese" relatar sintomas (ex: vômito, diarreia) que contradizem o "Diagnóstico Preliminar" (ex: dermatite), IGNORE o diagnóstico preliminar e gere um novo baseado nos sintomas.
-        4. Baseie-se ESTRITAMENTE nos sintomas relatados.
-        5. Se as anotações estiverem vazias, retorne "Aguardando avaliação clínica".
+        ANOTAÇÕES BRUTAS: "${rawNotes}"
+        HISTÓRICO: "${history || ''}"
+        PET: ${JSON.stringify(pet)}
 
-        Retorne JSON estritamente com esta estrutura:
+        TAREFA:
+        1. Estruture em SOAP (Subjetivo, Objetivo, Avaliação, Plano).
+        2. Identifique procedimentos para faturamento.
+        3. Gere uma PRESCRIÇÃO sugerida (se aplicável).
+        4. Escreva INSTRUÇÕES PARA O TUTOR (Linguagem simples, empática, formatada para WhatsApp).
+
+        SAÍDA ESPERADA (JSON):
         {
-          "formattedNotes": "Texto completo formatado e profissional (SOAP)",
-          "hypotheses": ["Hipotese 1", "Hipotese 2"],
-          "suggestedExams": ["Exame 1", "Exame 2"],
-          "ownerInstructions": "Instruções claras para o tutor",
-          "diagnosis": "Diagnóstico principal sugerido (baseado APENAS nas notas)",
-          "treatment": "Protocolo de tratamento sugerido"
+            "diagnosis": "Hipótese diagnóstica principal (Resumo)",
+            "treatment": "Plano terapêutico sugerido (Resumo)",
+            "structured_soap": {
+                "s": "...",
+                "o": "...",
+                "a": "...",
+                "p": "..."
+            },
+            "suggested_billing": [
+                { "item": "Nome do Procedimento", "confidence": "High/Medium", "reason": "Justificativa" }
+            ],
+            "prescription": [
+                { "medication": "Nome", "dosage": "Dose", "frequency": "Frequência", "duration": "Duração" }
+            ],
+            "owner_instructions": {
+                "title": "Cuidados em Casa com [Nome do Pet]",
+                "text": "Olá! Aqui estão os cuidados...\n\n1. Medicação...\n2. Observar...",
+                "whatsapp_format": "*Cuidados com [Nome do Pet]* 🐾\n\nOlá! Seguem as orientações..."
+            },
+            "follow_up_suggestion": "Retorno em X dias."
         }
     `;
 
     try {
-        const result = await generativeModel.generateContent(prompt);
+        console.log(`📝 Estruturando Notas Clínicas (Model: ${process.env.GOOGLE_VERTEX_MODEL || 'default'})...`);
+        const request = {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+        };
+        const result = await generateContentWithRetry(modelToUse, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
         
-        const jsonResponse = parseAIJSON(text) || { formattedNotes: rawNotes, diagnosis: "Erro ao processar IA", treatment: "Verificar manualmente" };
+        const jsonResponse = parseAIJSON(text) || { 
+            diagnosis: "Não foi possível gerar o diagnóstico (Erro de formato)",
+            treatment: "Tente novamente",
+            structured_soap: { 
+                s: rawNotes,
+                o: "Não identificado",
+                a: "Não identificado",
+                p: "Não identificado"
+            },
+            suggested_billing: [],
+            prescription: [],
+            owner_instructions: { title: "Erro", text: "Não foi possível gerar instruções." }
+        };
 
         res.json(jsonResponse);
     } catch (err) {
-        console.error('Erro na Vertex AI (Prontuário):', err);
-        res.status(500).json({ error: 'Erro ao estruturar prontuário' });
+        console.error('Erro na Vertex AI (Notes):', err);
+        // Better error message for frontend
+        const errorMessage = err.message?.includes('429') || err.status === 'RESOURCE_EXHAUSTED'
+            ? 'Cota de IA excedida. Tente novamente em alguns instantes.' 
+            : 'Erro ao estruturar notas com IA.';
+            
+        res.status(500).json({ error: errorMessage, details: err.message });
+    }
+});
+
+// 8. AI Vision Analysis (Simulated for Demo)
+app.post('/api/ai/analyze-image', authenticateToken, async (req, res) => {
+    if (!generativeModel) {
+        return res.status(503).json({ error: 'Serviço de IA não disponível.' });
+    }
+
+    const { imageType, description, simulatedFinding } = req.body;
+
+    // In a real scenario, we would send the image bytes to Vertex AI Vision.
+    // Here we simulate the analysis based on the description to demonstrate the workflow.
+    
+    const prompt = `
+        Atue como um Especialista em Radiologia e Dermatologia Veterinária.
+        Analise a seguinte descrição de uma imagem diagnóstica (Simulando visão computacional):
+        
+        TIPO DE IMAGEM: ${imageType} (Ex: Raio-X, Ultrassom, Foto Dermatológica)
+        DESCRIÇÃO VISUAL: ${description}
+        SUSPEITA CLÍNICA: ${simulatedFinding || 'Análise exploratória'}
+
+        TAREFA:
+        1. Descreva os achados técnicos detalhados (como se estivesse vendo a imagem).
+        2. Sugira um diagnóstico diferencial.
+        3. Indique o grau de urgência (1-10).
+
+        SAÍDA ESPERADA (JSON):
+        {
+            "technical_findings": "Observa-se opacidade difusa em lobo pulmonar...",
+            "diagnosis": ["Pneumonia Aspirativa", "Edema Pulmonar"],
+            "confidence": "85%",
+            "urgency_score": 8,
+            "recommendation": "Realizar hemograma e iniciar antibioticoterapia."
+        }
+    `;
+
+    try {
+        console.log(`👁️ Analisando Imagem (Model: ${process.env.GOOGLE_VERTEX_MODEL || 'default'})...`);
+        const request = {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+        };
+        const result = await generateContentWithRetry(generativeModel, request);
+        const response = await result.response;
+        const text = response.candidates[0].content.parts[0].text;
+        
+        const jsonResponse = parseAIJSON(text) || { technical_findings: "Erro na análise." };
+
+        res.json(jsonResponse);
+    } catch (err) {
+        console.error('Erro na Vertex AI (Vision):', err);
+        res.status(500).json({ error: 'Erro ao analisar imagem' });
     }
 });
 
@@ -946,16 +1188,19 @@ app.post('/api/ai/care-plan', authenticateToken, async (req, res) => {
     `;
 
     try {
-        const result = await generativeModel.generateContent(prompt);
+        console.log(`🛡️ Gerando Plano Preventivo (Model: ${process.env.GOOGLE_VERTEX_MODEL || 'default'})...`);
+        const request = {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+        };
+        const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
         
-        const jsonMatch = text.match(/\[[\s\S]*\]/); // Match array
-        const jsonResponse = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-
+        const jsonResponse = parseAIJSON(text) || [];
         res.json(jsonResponse);
     } catch (err) {
-        console.error('Erro na Vertex AI (Plano):', err);
+        console.error('Erro na Vertex AI (Care Plan):', err);
         res.status(500).json({ error: 'Erro ao gerar plano preventivo' });
     }
 });
