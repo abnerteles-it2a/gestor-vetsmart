@@ -28,7 +28,7 @@ api.interceptors.response.use(
       localStorage.removeItem('vetsmart_user');
       // Opcional: Redirecionar para login se estiver no browser
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-         window.location.href = '/login';
+        window.location.href = '/login';
       }
     }
     return Promise.reject(error);
@@ -39,7 +39,7 @@ export const apiService = {
   // Auth
   login: (credentials: any) => api.post('/auth/login', credentials),
   register: (data: any) => api.post('/auth/register', data),
-  
+
   // Users / Vets
   getVets: () => api.get('/users/vets'),
 
@@ -47,7 +47,7 @@ export const apiService = {
   getPets: () => api.get('/pets'),
   createPet: (data: any) => api.post('/pets', data),
   updatePet: (id: string, data: any) => api.put(`/pets/${id}`, data),
-  
+
   // Tutors
   getTutors: () => api.get('/tutors'),
   createTutor: (data: any) => api.post('/tutors', data),
@@ -55,7 +55,7 @@ export const apiService = {
   // Appointments
   getAppointments: () => api.get('/appointments'),
   createAppointment: (data: any) => api.post('/appointments', data),
-  
+
   // Surgeries
   getSurgeries: () => api.get('/surgeries'),
   createSurgery: (data: any) => api.post('/surgeries', data),
@@ -63,7 +63,7 @@ export const apiService = {
   // Products (Inventory)
   getProducts: () => api.get('/products'),
   createProduct: (data: any) => api.post('/products', data),
-  
+
   // Sales
   getSales: () => api.get('/sales'),
   createSale: (data: any) => api.post('/sales', data),
@@ -74,6 +74,14 @@ export const apiService = {
 
   // Dashboard
   getDashboardKPIs: () => api.get('/dashboard/kpis'),
+
+  // Hospitalization
+  getHospitalizations: () => api.get('/hospitalization'),
+  createHospitalization: (data: any) => api.post('/hospitalization', data),
+  updateHospitalization: (id: string, data: any) => api.put(`/hospitalization/${id}`, data),
+
+  // Plans
+  getPlans: () => api.get('/plans'),
 
   // AI Features
   getInventoryForecast: () => api.get('/ai/inventory-forecast'),

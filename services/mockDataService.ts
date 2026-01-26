@@ -36,6 +36,7 @@ export interface Pet {
   allergies?: string;
   photoUrl?: string;
   medicalHistory?: MedicalRecord[];
+  tutorId?: string;
 }
 
 export interface Appointment {
@@ -140,7 +141,7 @@ const mockStore = {
 };
 
 class MockDataService {
-  
+
   // PETS
   async getPets(): Promise<Pet[]> {
     try {
@@ -153,476 +154,316 @@ class MockDataService {
         tutor: p.tutor_name || 'N/A',
         age: this.calculateAge(p.birth_date),
         weight: `${p.weight}kg`,
-        status: 'Ativo', // Mocked
-        phone: '(11) 99999-9999', // Would need join
-        email: 'email@exemplo.com', // Would need join
-        visitsThisYear: Math.floor(Math.random() * 10), // Mocked
-        lastVisit: getToday(), // Mocked
-        nextAppointment: null,
-        totalSpend: 'R$ 0,00', // Mocked
-        plan: 'Básico', // Mocked
+        status: 'Ativo',
+        phone: p.phone || '(11) 99999-9999',
+        email: p.email || 'email@exemplo.com',
+        visitsThisYear: p.visits_count || 0,
+        lastVisit: p.last_visit || getToday(),
+        nextAppointment: p.next_appointment || null,
+        totalSpend: Number(p.total_spend || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        plan: p.plan_name || 'Sem Plano',
         photoUrl: p.photo_url || 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80'
       }));
     } catch (error) {
-      console.warn('Backend unavailable, using mock data for Pets');
-      return mockStore.pets.map(p => {
-        // Find associated tutor to get real mock phone
-        const tutor = mockStore.tutors.find(t => t.name === p.tutor);
-        
-        return {
-          id: p.id,
-          name: p.name,
-          species: p.species,
-          breed: p.breed,
-          tutor: p.tutor,
-          age: this.calculateAge(p.birth_date),
-          weight: p.weight,
-          status: p.status,
-          phone: tutor ? tutor.phone : '(11) 99999-9999',
-          email: tutor ? tutor.email : 'mock@email.com',
-          visitsThisYear: 5,
-          lastVisit: getToday(),
-          nextAppointment: null,
-          totalSpend: 'R$ 0,00',
-          plan: 'Premium',
-          photoUrl: p.photo_url
-        };
-      });
+      console.warn('Backend unavailable, returning empty list for Pets');
+      return [];
     }
   }
 
   async addPet(pet: Omit<Pet, 'id'>): Promise<Pet> {
-    try {
-        const apiPet = {
-            name: pet.name,
-            species: pet.species,
-            breed: pet.breed,
-            weight: parseFloat(pet.weight.replace('kg', '')),
-            birth_date: pet.birthDate || getToday(),
-            tutor_id: 1 // Default to first tutor for demo/ MVP
-        };
-        const response = await apiService.createPet(apiPet);
-        const newPet = response.data;
-        return {
-            ...pet,
-            id: newPet.id.toString()
-        };
-    } catch (e) {
-        console.warn('Backend unavailable, adding to mock store');
-        const newId = (mockStore.pets.length + 1).toString();
-        const newPet = {
-          id: newId,
-          name: pet.name,
-          species: pet.species,
-          breed: pet.breed,
-          tutor: pet.tutor || 'Tutor Mock',
-          weight: pet.weight,
-          birth_date: pet.birthDate || getToday(),
-          photo_url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=150&q=80',
-          status: 'Ativo'
-        };
-        mockStore.pets.push(newPet);
-        return { ...pet, id: newId };
-    }
+    const apiPet = {
+      name: pet.name,
+      species: pet.species,
+      breed: pet.breed,
+      weight: parseFloat(pet.weight.replace('kg', '')),
+      birth_date: pet.birthDate || getToday(),
+      tutor_id: pet.tutorId ? parseInt(pet.tutorId) : 1
+    };
+    const response = await apiService.createPet(apiPet);
+    const newPet = response.data;
+    return {
+      ...pet,
+      id: newPet.id.toString()
+    };
   }
 
   async updatePet(id: string, pet: Partial<Pet>): Promise<Pet> {
-    try {
-        const apiPet = {
-            name: pet.name,
-            species: pet.species,
-            breed: pet.breed,
-            weight: pet.weight ? parseFloat(pet.weight.replace('kg', '')) : undefined,
-            birth_date: pet.birthDate,
-            allergies: pet.allergies
-        };
-        const response = await apiService.updatePet(id, apiPet);
-        const updatedPet = response.data;
-        return {
-            ...pet,
-            id: updatedPet.id.toString(),
-            age: pet.birthDate ? this.calculateAge(pet.birthDate) : (pet.age || 'N/A'),
-        } as Pet;
-    } catch (e) {
-        console.warn('Backend unavailable, updating mock store');
-        const index = mockStore.pets.findIndex(p => p.id === id);
-        if (index !== -1) {
-            mockStore.pets[index] = { ...mockStore.pets[index], ...pet };
-            return { ...mockStore.pets[index] } as any;
-        }
-        return pet as Pet;
-    }
+    const apiPet = {
+      name: pet.name,
+      species: pet.species,
+      breed: pet.breed,
+      weight: pet.weight ? parseFloat(pet.weight.replace('kg', '')) : undefined,
+      birth_date: pet.birthDate,
+      allergies: pet.allergies
+    };
+    const response = await apiService.updatePet(id, apiPet);
+    const updatedPet = response.data;
+    return {
+      ...pet,
+      id: updatedPet.id.toString(),
+      age: pet.birthDate ? this.calculateAge(pet.birthDate) : (pet.age || 'N/A'),
+    } as Pet;
   }
 
   // APPOINTMENTS
   async getAppointments(): Promise<Appointment[]> {
     try {
-        const response = await apiService.getAppointments();
-        return response.data.map((a: any) => ({
-            id: a.id.toString(),
-            date: a.appointment_date.split('T')[0],
-            time: new Date(a.appointment_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-            pet: a.pet_name,
-            species: a.species || 'N/A',
-            tutor: a.tutor_name,
-            service: a.reason || a.type,
-            status: a.status,
-            room: 'Sala 1', // Mocked
-            vet: a.vet_name || 'Dr. Ricardo',
-            type: a.type
-        }));
+      const response = await apiService.getAppointments();
+      return response.data.map((a: any) => ({
+        id: a.id.toString(),
+        date: a.appointment_date.split('T')[0],
+        time: new Date(a.appointment_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        pet: a.pet_name,
+        species: a.species || 'N/A',
+        tutor: a.tutor_name,
+        service: a.reason || a.type,
+        status: a.status,
+        room: 'Sala 1',
+        vet: a.vet_name || 'Dr. Ricardo',
+        type: a.type
+      }));
     } catch (error) {
-        console.warn('Backend unavailable, using mock appointments');
-        return mockStore.appointments.map(a => ({
-            id: a.id,
-            date: a.appointment_date.split('T')[0],
-            time: new Date(a.appointment_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-            pet: a.pet_name,
-            species: 'Canino',
-            tutor: a.tutor_name,
-            service: a.reason,
-            status: a.status,
-            room: 'Sala 1',
-            vet: a.vet_name,
-            type: a.type
-        }));
+      console.warn('Backend unavailable, returning empty appointments');
+      return [];
     }
   }
 
   async addAppointment(apt: Omit<Appointment, 'id'>): Promise<Appointment> {
-      try {
-          const apiApt = {
-              pet_id: 1, // Mocked/Default for MVP
-              vet_id: 1, // Mocked/Default
-              appointment_date: `${apt.date}T${apt.time}:00`,
-              type: apt.type,
-              reason: apt.service
-          };
-          const response = await apiService.createAppointment(apiApt);
-          const newApt = response.data;
-          return {
-              ...apt,
-              id: newApt.id.toString()
-          };
-      } catch (e) {
-          console.warn('Backend unavailable, adding mock appointment');
-          const newId = (mockStore.appointments.length + 1).toString();
-          mockStore.appointments.push({
-              id: newId,
-              appointment_date: `${apt.date}T${apt.time}:00`,
-              pet_name: apt.pet,
-              tutor_name: apt.tutor,
-              type: apt.type,
-              status: apt.status,
-              vet_name: apt.vet,
-              reason: apt.service
-          });
-          return { ...apt, id: newId };
-      }
+    const apiApt = {
+      pet_id: parseInt(apt.pet), // Expecting ID here in a real scenario
+      vet_id: 1,
+      appointment_date: `${apt.date}T${apt.time}:00`,
+      type: apt.type,
+      reason: apt.service
+    };
+    const response = await apiService.createAppointment(apiApt);
+    const newApt = response.data;
+    return {
+      ...apt,
+      id: newApt.id.toString()
+    };
   }
 
   // SALES
   async getSales(): Promise<Sale[]> {
     try {
-        const response = await apiService.getSales();
-        return response.data.map((s: any) => ({
-            id: s.id.toString(),
-            date: new Date(s.sale_date).toLocaleString('pt-BR'),
-            desc: `Venda #${s.id}`, // Detail missing in list
-            value: Number(s.total_amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-            payment: s.payment_method,
-            status: s.status
-        }));
+      const response = await apiService.getSales();
+      return response.data.map((s: any) => ({
+        id: s.id.toString(),
+        date: new Date(s.sale_date).toLocaleString('pt-BR'),
+        desc: `Venda #${s.id}`,
+        value: Number(s.total_amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        payment: s.payment_method,
+        status: s.status
+      }));
     } catch (e) {
-        console.warn('Backend unavailable, using mock sales');
-        return mockStore.sales.map(s => ({
-            id: s.id,
-            date: new Date(s.sale_date).toLocaleString('pt-BR'),
-            desc: `Venda #${s.id}`,
-            value: s.total_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-            payment: s.payment_method,
-            status: s.status
-        }));
+      return [];
     }
   }
 
   async addSale(sale: Omit<Sale, 'id'>): Promise<Sale> {
-      try {
-          const apiSale = {
-              user_id: 1,
-              tutor_id: 1,
-              total_amount: parseFloat(sale.value.replace('R$', '').replace('.', '').replace(',', '.').trim()),
-              payment_method: sale.payment,
-              status: sale.status,
-              items: [] // UI doesn't pass items yet in this call
-          };
-          const response = await apiService.createSale(apiSale);
-          const newSale = response.data;
-          return {
-              ...sale,
-              id: newSale.id.toString()
-          };
-      } catch (e) {
-          console.warn('Backend unavailable, adding mock sale');
-          const newId = (mockStore.sales.length + 1).toString();
-          mockStore.sales.push({
-              id: newId,
-              sale_date: new Date().toISOString(),
-              total_amount: parseFloat(sale.value.replace('R$', '').replace('.', '').replace(',', '.').trim()),
-              payment_method: sale.payment,
-              status: sale.status
-          });
-          return { ...sale, id: newId };
-      }
+    const apiSale = {
+      tutor_id: 1, // Defaulting for demo
+      total_amount: parseFloat(sale.value.replace('R$', '').replace('.', '').replace(',', '.').trim()),
+      payment_method: sale.payment,
+      status: sale.status,
+      items: []
+    };
+    const response = await apiService.createSale(apiSale);
+    const newSale = response.data;
+    return {
+      ...sale,
+      id: newSale.id.toString()
+    };
   }
 
   // INVENTORY
   async getInventory(): Promise<InventoryItem[]> {
-      try {
-          const response = await apiService.getProducts();
-          return response.data.map((p: any) => ({
-              id: p.id.toString(),
-              name: p.name,
-              category: p.category,
-              stock: p.stock_quantity,
-              minStock: p.min_stock_level,
-              price: Number(p.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-              status: p.stock_quantity <= p.min_stock_level ? (p.stock_quantity === 0 ? 'critical' : 'warning') : 'ok',
-              sku: p.sku
-          }));
-      } catch (e) {
-          console.warn('Backend unavailable, using mock inventory');
-          return mockStore.products.map(p => ({
-              id: p.id,
-              name: p.name,
-              category: p.category,
-              stock: p.stock_quantity,
-              minStock: p.min_stock_level,
-              price: p.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-              status: p.stock_quantity <= p.min_stock_level ? (p.stock_quantity === 0 ? 'critical' : 'warning') : 'ok',
-              sku: p.sku
-          }));
-      }
+    try {
+      const response = await apiService.getProducts();
+      return response.data.map((p: any) => ({
+        id: p.id.toString(),
+        name: p.name,
+        category: p.category,
+        stock: p.stock_quantity,
+        minStock: p.min_stock_level,
+        price: Number(p.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        status: p.stock_quantity <= p.min_stock_level ? (p.stock_quantity === 0 ? 'critical' : 'warning') : 'ok',
+        sku: p.sku
+      }));
+    } catch (e) {
+      return [];
+    }
   }
 
   async addItem(item: Omit<InventoryItem, 'id'>): Promise<InventoryItem> {
-      try {
-          const apiProduct = {
-              name: item.name,
-              category: item.category,
-              price: parseFloat(item.price.replace('R$', '').replace('.', '').replace(',', '.').trim()),
-              stock_quantity: item.stock,
-              min_stock_level: item.minStock
-          };
-          const response = await apiService.createProduct(apiProduct);
-          const newProduct = response.data;
-          return {
-              ...item,
-              id: newProduct.id.toString()
-          };
-      } catch (e) {
-          console.warn('Backend unavailable, adding mock product');
-          const newId = (mockStore.products.length + 1).toString();
-          mockStore.products.push({
-              id: newId,
-              name: item.name,
-              category: item.category,
-              stock_quantity: item.stock,
-              min_stock_level: item.minStock,
-              price: parseFloat(item.price.replace('R$', '').replace('.', '').replace(',', '.').trim()),
-              sku: item.sku
-          });
-          return { ...item, id: newId };
-      }
+    const apiProduct = {
+      name: item.name,
+      category: item.category,
+      price: parseFloat(item.price.replace('R$', '').replace('.', '').replace(',', '.').trim()),
+      stock_quantity: item.stock,
+      min_stock_level: item.minStock
+    };
+    const response = await apiService.createProduct(apiProduct);
+    return { ...item, id: response.data.id.toString() };
   }
 
   // HELPERS
   async getVets(): Promise<Vet[]> {
-      try {
-          const response = await apiService.getVets();
-          return response.data.map((v: any) => ({
-              id: v.id.toString(),
-              name: v.name,
-              specialty: 'Geral' 
-          }));
-      } catch (e) {
-          return [
-            { id: '1', name: 'Dr. Ricardo', specialty: 'Cirurgião' },
-            { id: '2', name: 'Dra. Fernanda', specialty: 'Clínica Geral' }
-          ];
-      }
+    try {
+      const response = await apiService.getVets();
+      return response.data.map((v: any) => ({
+        id: v.id.toString(),
+        name: v.name,
+        specialty: v.role === 'admin' ? 'Diretor Clínico' : 'Veterinário'
+      }));
+    } catch (e) {
+      return [];
+    }
   }
 
   async getTutors(): Promise<Tutor[]> {
-      try {
-          const response = await apiService.getTutors();
-          return response.data.map((t: any) => ({
-              id: t.id.toString(),
-              name: t.name,
-              phone: t.phone,
-              email: t.email,
-              pets: [] 
-          }));
-      } catch (e) {
-          return mockStore.tutors.map(t => ({...t, pets: []}));
-      }
+    try {
+      const response = await apiService.getTutors();
+      return response.data.map((t: any) => ({
+        id: t.id.toString(),
+        name: t.name,
+        phone: t.phone,
+        email: t.email,
+        pets: []
+      }));
+    } catch (e) {
+      return [];
+    }
   }
 
   async addTutor(tutor: Omit<Tutor, 'id' | 'pets'>): Promise<Tutor> {
-      try {
-          const response = await apiService.createTutor(tutor);
-          return {
-              ...tutor,
-              id: response.data.id.toString(),
-              pets: []
-          };
-      } catch (e) {
-          const newId = (mockStore.tutors.length + 1).toString();
-          mockStore.tutors.push({ id: newId, ...tutor });
-          return { ...tutor, id: newId, pets: [] };
-      }
+    const response = await apiService.createTutor(tutor);
+    return {
+      ...tutor,
+      id: response.data.id.toString(),
+      pets: []
+    };
   }
 
   // SURGERIES
   async getSurgeries(): Promise<Surgery[]> {
-      try {
-          const response = await apiService.getSurgeries();
-          return response.data.map((s: any) => ({
-              id: s.id.toString(),
-              petName: s.pet_name,
-              tutorName: s.tutor_name,
-              procedure: s.procedure_name,
-              vetName: s.vet_name,
-              date: s.surgery_date.split('T')[0],
-              time: new Date(s.surgery_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-              status: s.status,
-              checklist: s.checklist || { jejum: false, exames: false, termo: false, anestesia: false }
-          }));
-      } catch (e) {
-          console.warn('Backend unavailable, using mock surgeries');
-          return mockStore.surgeries.map(s => ({
-              id: s.id,
-              petName: s.pet_name,
-              tutorName: s.tutor_name,
-              procedure: s.procedure_name,
-              vetName: s.vet_name,
-              date: s.surgery_date.split('T')[0],
-              time: new Date(s.surgery_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-              status: s.status,
-              checklist: s.checklist
-          }));
-      }
+    try {
+      const response = await apiService.getSurgeries();
+      return response.data.map((s: any) => ({
+        id: s.id.toString(),
+        petName: s.pet_name,
+        tutorName: s.tutor_name,
+        procedure: s.procedure_name,
+        vetName: s.vet_name,
+        date: s.surgery_date.split('T')[0],
+        time: new Date(s.surgery_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        status: s.status,
+        checklist: s.checklist || { jejum: false, exames: false, termo: false, anestesia: false }
+      }));
+    } catch (e) {
+      return [];
+    }
   }
 
   async addSurgery(surgery: Surgery): Promise<Surgery> {
-      try {
-          const apiSurgery = {
-              pet_id: 1, // Mocked
-              vet_id: 1, // Mocked
-              procedure_name: surgery.procedure,
-              surgery_date: `${surgery.date}T${surgery.time}:00`,
-              status: surgery.status,
-              checklist: surgery.checklist
-          };
-          const response = await apiService.createSurgery(apiSurgery);
-          const newSurgery = response.data;
-          return {
-              ...surgery,
-              id: newSurgery.id.toString()
-          };
-      } catch (e) {
-          console.warn('Backend unavailable, adding mock surgery');
-          const newId = (mockStore.surgeries.length + 1).toString();
-          mockStore.surgeries.push({
-              id: newId,
-              pet_name: surgery.petName,
-              tutor_name: surgery.tutorName,
-              procedure_name: surgery.procedure,
-              vet_name: surgery.vetName,
-              surgery_date: `${surgery.date}T${surgery.time}:00`,
-              status: surgery.status,
-              checklist: surgery.checklist
-          });
-          return { ...surgery, id: newId };
-      }
+    const apiSurgery = {
+      pet_id: parseInt(surgery.id) || 1, // Use surgery.petId if available
+      vet_id: 1,
+      procedure_name: surgery.procedure,
+      surgery_date: `${surgery.date}T${surgery.time}:00`,
+      status: surgery.status,
+      checklist: surgery.checklist
+    };
+    const response = await apiService.createSurgery(apiSurgery);
+    return { ...surgery, id: response.data.id.toString() };
+  }
+
+  // HOSPITALIZATION
+  async getHospitalization(): Promise<any[]> {
+    try {
+      const response = await apiService.getHospitalizations();
+      return response.data.map((p: any) => ({
+        id: p.id.toString(),
+        name: p.pet_name,
+        species: p.species,
+        tutor: p.tutor_name,
+        reason: p.reason,
+        admissionDate: new Date(p.admission_date).toLocaleString('pt-BR'),
+        nextMedication: p.next_medication_time ? new Date(p.next_medication_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-',
+        status: p.status,
+        bay: p.bay
+      }));
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async addHospitalization(data: any): Promise<any> {
+    const response = await apiService.createHospitalization(data);
+    return response.data;
+  }
+
+  async updateHospitalization(id: string, data: any): Promise<any> {
+    const response = await apiService.updateHospitalization(id, data);
+    return response.data;
   }
 
   // AI
   async getInventoryForecast(): Promise<any> {
     try {
-        const response = await apiService.getInventoryForecast();
-        return response.data;
+      const response = await apiService.getInventoryForecast();
+      return response.data;
     } catch (e) {
-        console.error('Error fetching AI forecast', e);
-        return { predictions: [] };
+      return { predictions: [] };
     }
   }
 
   // CAMPAIGNS
   async getCampaigns(): Promise<any[]> {
     try {
-        const response = await apiService.getCampaigns();
-        return response.data.map((c: any) => ({
-            id: c.id,
-            title: c.title,
-            status: c.status,
-            target: c.target_audience,
-            sent: c.metrics?.sent || 0,
-            opened: c.metrics?.opened || 0,
-            converted: c.metrics?.converted || 0,
-            roi: c.metrics?.roi || '-',
-            date: c.start_date ? new Date(c.start_date).toLocaleDateString('pt-BR') : 'Rascunho'
-        }));
+      const response = await apiService.getCampaigns();
+      return response.data.map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        status: c.status,
+        target: c.target_audience,
+        sent: c.metrics?.sent || 0,
+        opened: c.metrics?.opened || 0,
+        converted: c.metrics?.converted || 0,
+        roi: c.metrics?.roi || '-',
+        date: c.start_date ? new Date(c.start_date).toLocaleDateString('pt-BR') : 'Rascunho'
+      }));
     } catch (e) {
-        return [];
+      return [];
     }
   }
 
   async getSmartCampaigns(): Promise<any> {
     try {
-        const response = await apiService.getSmartCampaigns();
-        return response.data;
+      const response = await apiService.getSmartCampaigns();
+      return response.data;
     } catch (e) {
-        throw e;
+      throw e;
     }
   }
 
   // MEDICAL RECORDS
   async getMedicalRecords(petId: string): Promise<MedicalRecord[]> {
     try {
-      // In a real app, this would call apiService.getMedicalRecords(petId)
-      // For now, return from mockStore
-      return mockStore.medicalRecords.filter(r => r.petId === petId);
+      // In a real app, we would have a specific endpoint
+      const response = await apiService.getPets(); // Filtered by petId would be better
+      const pet = response.data.find((p: any) => p.id.toString() === petId);
+      return pet?.medical_history ? JSON.parse(pet.medical_history) : [];
     } catch (e) {
-      console.warn('Backend unavailable, using mock medical records');
       return [];
     }
   }
 
   async saveMedicalRecord(record: Omit<MedicalRecord, 'id' | 'date'>): Promise<MedicalRecord> {
-    try {
-      // In a real app, this would call apiService.createMedicalRecord(record)
-      // For now, add to mockStore
-      const newId = (mockStore.medicalRecords.length + 1).toString();
-      const newRecord = {
-        ...record,
-        id: newId,
-        date: getToday()
-      };
-      mockStore.medicalRecords.push(newRecord);
-      console.log('Medical Record Saved:', newRecord);
-      return newRecord;
-    } catch (e) {
-      console.warn('Backend unavailable, adding mock medical record');
-      const newId = (mockStore.medicalRecords.length + 1).toString();
-      const newRecord = {
-        ...record,
-        id: newId,
-        date: getToday()
-      };
-      mockStore.medicalRecords.push(newRecord);
-      return newRecord;
-    }
+    // Update pet's medical history
+    const response = await apiService.updatePet(record.petId, { medical_history: JSON.stringify(record) });
+    return { ...record, id: Date.now().toString(), date: getToday() };
   }
 
   private calculateAge(birthDate: string): string {
@@ -632,7 +473,7 @@ class MockDataService {
     let years = now.getFullYear() - birth.getFullYear();
     const m = now.getMonth() - birth.getMonth();
     if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
-        years--;
+      years--;
     }
     return `${years} anos`;
   }

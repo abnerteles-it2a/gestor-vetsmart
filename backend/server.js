@@ -33,46 +33,46 @@ let generativeModel = null;
 let generativeModelFlash = null; // Optimized for long context (RAG)
 
 try {
-  // Handle Google Credentials from JSON string in environment variable
-  if (process.env.GOOGLE_CREDENTIALS_JSON) {
-    let credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON.trim();
-    // Remove potential backticks wrapping the JSON (common in some env setups)
-    if (credentialsJson.startsWith('`')) {
-        if (credentialsJson.endsWith('`')) {
-            credentialsJson = credentialsJson.slice(1, -1);
-        } else {
-            // Handle case where trailing backtick might be missing or separated
-            credentialsJson = credentialsJson.substring(1); 
+    // Handle Google Credentials from JSON string in environment variable
+    if (process.env.GOOGLE_CREDENTIALS_JSON) {
+        let credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON.trim();
+        // Remove potential backticks wrapping the JSON (common in some env setups)
+        if (credentialsJson.startsWith('`')) {
+            if (credentialsJson.endsWith('`')) {
+                credentialsJson = credentialsJson.slice(1, -1);
+            } else {
+                // Handle case where trailing backtick might be missing or separated
+                credentialsJson = credentialsJson.substring(1);
+            }
         }
+
+        // Na Vercel, apenas /tmp é gravável
+        const tmpDir = os.tmpdir();
+        const credentialsPath = path.join(tmpDir, 'google-credentials.json');
+        fs.writeFileSync(credentialsPath, credentialsJson);
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+        console.log(`🔑 Credenciais do Google Cloud configuradas em ${credentialsPath}`);
     }
-    
-    // Na Vercel, apenas /tmp é gravável
-    const tmpDir = os.tmpdir();
-    const credentialsPath = path.join(tmpDir, 'google-credentials.json');
-    fs.writeFileSync(credentialsPath, credentialsJson);
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
-    console.log(`🔑 Credenciais do Google Cloud configuradas em ${credentialsPath}`);
-  }
 
-  // Configuração usando credenciais do ambiente ou ADC (Application Default Credentials)
-  const projectId = process.env.GOOGLE_CLOUD_PROJECT;
-  const location = process.env.GOOGLE_VERTEX_LOCATION || 'us-central1';
-  // Usando Gemini 2.5 Flash (Mais recente e rápido)
-  const modelName = process.env.GOOGLE_VERTEX_MODEL || 'gemini-2.0-flash-001'; 
-  // Fallback to Flash
-  const flashModelName = 'gemini-2.0-flash-001'; 
+    // Configuração usando credenciais do ambiente ou ADC (Application Default Credentials)
+    const projectId = process.env.GOOGLE_CLOUD_PROJECT;
+    const location = process.env.GOOGLE_VERTEX_LOCATION || 'us-central1';
+    // Usando Gemini 2.5 Flash (Mais recente e rápido)
+    const modelName = process.env.GOOGLE_VERTEX_MODEL || 'gemini-2.0-flash-001';
+    // Fallback to Flash
+    const flashModelName = 'gemini-2.0-flash-001';
 
-  if (projectId) {
-    vertexAIClient = new VertexAI({ project: projectId, location: location });
-    generativeModel = vertexAIClient.getGenerativeModel({ model: modelName });
-    // Initialize Flash model for RAG tasks (supports larger context)
-    generativeModelFlash = vertexAIClient.getGenerativeModel({ model: flashModelName });
-    console.log(`✨ Vertex AI inicializado: Project=${projectId}, Model=${modelName}, Flash=${flashModelName}`);
-  } else {
-    console.warn('⚠️ GOOGLE_CLOUD_PROJECT não definido. Funcionalidades de IA estarão indisponíveis no backend.');
-  }
+    if (projectId) {
+        vertexAIClient = new VertexAI({ project: projectId, location: location });
+        generativeModel = vertexAIClient.getGenerativeModel({ model: modelName });
+        // Initialize Flash model for RAG tasks (supports larger context)
+        generativeModelFlash = vertexAIClient.getGenerativeModel({ model: flashModelName });
+        console.log(`✨ Vertex AI inicializado: Project=${projectId}, Model=${modelName}, Flash=${flashModelName}`);
+    } else {
+        console.warn('⚠️ GOOGLE_CLOUD_PROJECT não definido. Funcionalidades de IA estarão indisponíveis no backend.');
+    }
 } catch (error) {
-  console.error('❌ Erro ao inicializar Vertex AI:', error);
+    console.error('❌ Erro ao inicializar Vertex AI:', error);
 }
 
 // --- HELPER FUNCTIONS ---
@@ -83,10 +83,10 @@ async function generateContentWithRetry(model, prompt, retries = 3, delay = 2000
             return await model.generateContent(prompt);
         } catch (error) {
             // Check for 429 or other retryable errors (sometimes quota errors come with specific messages)
-            const isRetryable = error.code === 429 || 
-                               (error.message && error.message.includes('429')) ||
-                               (error.message && error.message.includes('Resource has been exhausted'));
-            
+            const isRetryable = error.code === 429 ||
+                (error.message && error.message.includes('429')) ||
+                (error.message && error.message.includes('Resource has been exhausted'));
+
             if (isRetryable) {
                 console.warn(`⚠️ Erro 429 (Cota excedida/Rate Limit) na tentativa ${i + 1}/${retries}. Retentando em ${delay}ms...`);
                 await new Promise(resolve => setTimeout(resolve, delay));
@@ -103,11 +103,11 @@ function parseAIJSON(text) {
     try {
         // Remove markdown code blocks if present
         let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        
+
         // Find the first '{' or '[' and the last '}' or ']'
         const firstBrace = cleanText.indexOf('{');
         const firstBracket = cleanText.indexOf('[');
-        
+
         let start = -1;
         let end = -1;
 
@@ -149,7 +149,7 @@ async function getKnowledgeBaseFiles() {
         if (!exists) return [];
 
         const [files] = await bucket.getFiles({ prefix: 'docs/' });
-        
+
         // Map to Vertex AI Part format
         return files.map(file => ({
             fileData: {
@@ -211,7 +211,7 @@ async function ensureSchema() {
     const client = await pool.connect();
     try {
         console.log('📦 Verificando schema do banco de dados...');
-        
+
         await client.query('BEGIN');
 
         // Users
@@ -258,6 +258,28 @@ async function ensureSchema() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+        `);
+
+        // Health Plans
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS health_plans (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                price DECIMAL(10,2) NOT NULL,
+                description TEXT,
+                benefits JSONB DEFAULT '[]',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Update Pets to include plan_id
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pets' AND column_name='plan_id') THEN
+                    ALTER TABLE pets ADD COLUMN plan_id INTEGER REFERENCES health_plans(id);
+                END IF;
+            END $$;
         `);
 
         // Products
@@ -364,6 +386,23 @@ async function ensureSchema() {
             );
         `);
 
+        // Hospitalizations
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS hospitalizations (
+                id SERIAL PRIMARY KEY,
+                pet_id INTEGER REFERENCES pets(id) ON DELETE CASCADE,
+                bay VARCHAR(50) NOT NULL,
+                reason TEXT,
+                status VARCHAR(50) DEFAULT 'stable',
+                admission_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                next_medication_time TIMESTAMP,
+                vitals_history JSONB DEFAULT '[]',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
         await client.query('COMMIT');
         console.log('✅ Schema verificado com sucesso.');
     } catch (e) {
@@ -414,9 +453,9 @@ app.post('/api/auth/login', async (req, res) => {
         if (hash !== user.password_hash) return res.status(401).json({ error: 'Senha incorreta' });
 
         const token = generateToken(user);
-        res.json({ 
-            user: { id: user.id, name: user.name, email: user.email, role: user.role }, 
-            token 
+        res.json({
+            user: { id: user.id, name: user.name, email: user.email, role: user.role },
+            token
         });
     } catch (err) {
         console.error(err);
@@ -491,11 +530,11 @@ app.put('/api/pets/:id', async (req, res) => {
              RETURNING *`,
             [name, species, breed, weight, birth_date, medical_history || allergies, id]
         );
-        
+
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Pet não encontrado' });
         }
-        
+
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
@@ -600,6 +639,118 @@ app.get('/api/campaigns', async (req, res) => {
     }
 });
 
+// VETS (Users with role vet/admin)
+app.get('/api/users/vets', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query("SELECT id, name, role FROM users WHERE role IN ('vet', 'admin') ORDER BY name ASC");
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao buscar veterinários' });
+    }
+});
+
+// HEALTH PLANS
+app.get('/api/plans', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM health_plans ORDER BY price ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao buscar planos' });
+    }
+});
+
+// SALES (POST)
+app.post('/api/sales', authenticateToken, async (req, res) => {
+    const { tutor_id, total_amount, payment_method, status, items } = req.body;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const saleRes = await client.query(
+            'INSERT INTO sales (user_id, tutor_id, total_amount, payment_method, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [req.user.id, tutor_id, total_amount, payment_method, status || 'concluido']
+        );
+        const sale = saleRes.rows[0];
+
+        if (items && items.length > 0) {
+            for (const item of items) {
+                await client.query(
+                    'INSERT INTO sale_items (sale_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4)',
+                    [sale.id, item.product_id, item.quantity, item.unit_price]
+                );
+                // Update stock
+                await client.query(
+                    'UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2',
+                    [item.quantity, item.product_id]
+                );
+            }
+        }
+
+        await client.query('COMMIT');
+        res.status(201).json(sale);
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao registrar venda' });
+    } finally {
+        client.release();
+    }
+});
+
+// HOSPITALIZATION
+app.get('/api/hospitalization', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT h.*, p.name as pet_name, p.species, t.name as tutor_name
+            FROM hospitalizations h
+            JOIN pets p ON h.pet_id = p.id
+            JOIN tutors t ON p.tutor_id = t.id
+            ORDER BY h.admission_date DESC
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao buscar internações' });
+    }
+});
+
+app.post('/api/hospitalization', authenticateToken, async (req, res) => {
+    const { pet_id, bay, reason, status, next_medication_time, notes } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO hospitalizations (pet_id, bay, reason, status, next_medication_time, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [pet_id, bay, reason, status || 'stable', next_medication_time, notes]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao criar internação' });
+    }
+});
+
+app.put('/api/hospitalization/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { bay, status, next_medication_time, vitals, notes } = req.body;
+    try {
+        const result = await pool.query(
+            `UPDATE hospitalizations 
+             SET bay = COALESCE($1, bay), 
+                 status = COALESCE($2, status), 
+                 next_medication_time = COALESCE($3, next_medication_time),
+                 vitals_history = CASE WHEN $4::jsonb IS NOT NULL THEN vitals_history || $4::jsonb ELSE vitals_history END,
+                 notes = COALESCE($5, notes),
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $6 RETURNING *`,
+            [bay, status, next_medication_time, vitals ? JSON.stringify(vitals) : null, notes, id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao atualizar internação' });
+    }
+});
+
 app.post('/api/campaigns', async (req, res) => {
     const { title, description, start_date, end_date, target_audience, status } = req.body;
     try {
@@ -618,7 +769,7 @@ app.post('/api/campaigns', async (req, res) => {
 app.get('/api/dashboard/kpis', async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
-        
+
         // Parallel queries for performance
         const [salesRes, apptsRes, alertsRes] = await Promise.all([
             pool.query('SELECT SUM(total_amount) as total, COUNT(*) as count FROM sales WHERE DATE(sale_date) = $1', [today]),
@@ -704,7 +855,7 @@ app.post('/api/ai/suggest-treatment', authenticateToken, async (req, res) => {
         const result = await model.generateContent(request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
-        
+
         // Tenta extrair JSON se o modelo retornar markdown
         const jsonResponse = parseAIJSON(text) || { raw_text: text };
 
@@ -778,7 +929,7 @@ app.get('/api/ai/inventory-forecast', authenticateToken, async (req, res) => {
         const result = await generativeModel.generateContent(prompt);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
-        
+
         const jsonResponse = parseAIJSON(text) || { analysis_summary: 'Erro ao processar IA (Formato inválido)' };
 
         res.json(jsonResponse);
@@ -815,8 +966,8 @@ app.get('/api/ai/smart-campaigns', authenticateToken, async (req, res) => {
         let prompt;
 
         if (userInstruction && userInstruction.trim() !== '') {
-             // --- MODE 1: User Directed Campaign ---
-             prompt = `
+            // --- MODE 1: User Directed Campaign ---
+            prompt = `
                 Atue como um Especialista em Marketing Veterinário.
                 O usuário (Veterinário/Gestor) solicitou criar uma campanha específica.
                 
@@ -882,7 +1033,7 @@ app.get('/api/ai/smart-campaigns', authenticateToken, async (req, res) => {
         const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
-        
+
         const jsonResponse = parseAIJSON(text) || { campaign_name: 'Erro ao gerar campanha', target_segments: [] };
 
         res.json(jsonResponse);
@@ -939,9 +1090,9 @@ app.post('/api/ai/hospitalization-round', authenticateToken, async (req, res) =>
         const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
-        
-        const jsonResponse = parseAIJSON(text) || { 
-            summary: 'Erro na análise (Formato inválido ou resposta vazia)', 
+
+        const jsonResponse = parseAIJSON(text) || {
+            summary: 'Erro na análise (Formato inválido ou resposta vazia)',
             critical_alerts: [],
             suggestions: []
         };
@@ -949,10 +1100,10 @@ app.post('/api/ai/hospitalization-round', authenticateToken, async (req, res) =>
         res.json(jsonResponse);
     } catch (err) {
         console.error('Erro na Vertex AI (Round):', err);
-        res.status(500).json({ 
-            error: `Erro ao processar ronda inteligente: ${err.message}`, 
+        res.status(500).json({
+            error: `Erro ao processar ronda inteligente: ${err.message}`,
             details: err.message,
-            code: err.code 
+            code: err.code
         });
     }
 });
@@ -1018,7 +1169,7 @@ app.get('/api/ai/financial-insights', authenticateToken, async (req, res) => {
         const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
-        
+
         const jsonResponse = parseAIJSON(text) || { insights: ['Sem dados suficientes ou erro de formato'] };
 
         res.json(jsonResponse);
@@ -1033,13 +1184,13 @@ app.get('/api/ai/financial-insights', authenticateToken, async (req, res) => {
 app.post('/api/ai/structure-clinical-notes', authenticateToken, async (req, res) => {
     // Use Flash model for speed and higher quota, fallback to Pro if needed
     const modelToUse = generativeModelFlash || generativeModel;
-    
+
     if (!modelToUse) {
         return res.status(503).json({ error: 'Serviço de IA não disponível.' });
     }
 
     const { pet, history, rawNotes } = req.body;
-    
+
     const prompt = `
         Atue como um Assistente Veterinário Sênior e Especialista em Comunicação.
         Transforme as anotações soltas (ditadas ou digitadas) em um registro clínico completo.
@@ -1088,11 +1239,11 @@ app.post('/api/ai/structure-clinical-notes', authenticateToken, async (req, res)
         const result = await generateContentWithRetry(modelToUse, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
-        
-        const jsonResponse = parseAIJSON(text) || { 
+
+        const jsonResponse = parseAIJSON(text) || {
             diagnosis: "Não foi possível gerar o diagnóstico (Erro de formato)",
             treatment: "Tente novamente",
-            structured_soap: { 
+            structured_soap: {
                 s: rawNotes,
                 o: "Não identificado",
                 a: "Não identificado",
@@ -1108,9 +1259,9 @@ app.post('/api/ai/structure-clinical-notes', authenticateToken, async (req, res)
         console.error('Erro na Vertex AI (Notes):', err);
         // Better error message for frontend
         const errorMessage = err.message?.includes('429') || err.status === 'RESOURCE_EXHAUSTED'
-            ? 'Cota de IA excedida. Tente novamente em alguns instantes.' 
+            ? 'Cota de IA excedida. Tente novamente em alguns instantes.'
             : 'Erro ao estruturar notas com IA.';
-            
+
         res.status(500).json({ error: errorMessage, details: err.message });
     }
 });
@@ -1125,7 +1276,7 @@ app.post('/api/ai/analyze-image', authenticateToken, async (req, res) => {
 
     // In a real scenario, we would send the image bytes to Vertex AI Vision.
     // Here we simulate the analysis based on the description to demonstrate the workflow.
-    
+
     const prompt = `
         Atue como um Especialista em Radiologia e Dermatologia Veterinária.
         Analise a seguinte descrição de uma imagem diagnóstica (Simulando visão computacional):
@@ -1158,7 +1309,7 @@ app.post('/api/ai/analyze-image', authenticateToken, async (req, res) => {
         const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
-        
+
         const jsonResponse = parseAIJSON(text) || { technical_findings: "Erro na análise." };
 
         res.json(jsonResponse);
@@ -1196,7 +1347,7 @@ app.post('/api/ai/care-plan', authenticateToken, async (req, res) => {
         const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
-        
+
         const jsonResponse = parseAIJSON(text) || [];
         res.json(jsonResponse);
     } catch (err) {
