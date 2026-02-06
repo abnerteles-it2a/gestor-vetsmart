@@ -31,6 +31,14 @@ const loadEnv = (file: string) => {
 loadEnv('.env');
 loadEnv('.env.local');
 
+console.log('--- Environment Check ---');
+const checkEnv = (key) => process.env[key] ? 'OK' : 'MISSING';
+console.log('DATABASE_URL:', checkEnv('DATABASE_URL'));
+console.log('GOOGLE_CLOUD_PROJECT:', checkEnv('GOOGLE_CLOUD_PROJECT'));
+console.log('GOOGLE_CREDENTIALS_JSON:', checkEnv('GOOGLE_CREDENTIALS_JSON'));
+console.log('JWT_SECRET:', checkEnv('JWT_SECRET'));
+console.log('-------------------------');
+
 // Serve static files from the client build directory
 app.use(express.static(path.join(__dirname, 'client')));
 

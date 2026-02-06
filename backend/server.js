@@ -169,9 +169,18 @@ app.use(express.json());
 
 // Database Configuration (Pool)
 // Configuração para Neon/Postgres com SSL obrigatório em produção
+console.log('🔌 Inicializando pool de conexão com o banco de dados...');
+if (!process.env.DATABASE_URL) {
+    console.error('❌ ERRO: DATABASE_URL não definida no ambiente!');
+}
+
 const pool = new pg.Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+    ssl: process.env.NODE_ENV === 'production' || process.env.VERCEL || process.env.AMPLIFY ? { rejectUnauthorized: false } : undefined,
+});
+
+pool.on('error', (err) => {
+    console.error('❌ Erro inesperado no pool de conexão do PostgreSQL:', err);
 });
 
 // --- HELPER FUNCTIONS ---
@@ -458,8 +467,11 @@ app.post('/api/auth/login', async (req, res) => {
             token
         });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Erro no login' });
+        console.error('❌ Erro crítico no login:', err);
+        res.status(500).json({
+            error: 'Erro no login',
+            details: process.env.NODE_ENV !== 'production' ? err.message : undefined
+        });
     }
 });
 
