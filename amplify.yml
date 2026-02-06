@@ -1,0 +1,25 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - npm run build
+        - mkdir -p .amplify-hosting/compute/default
+        - mkdir -p .amplify-hosting/static
+        - cp -r dist/client/* .amplify-hosting/static/
+        - cp dist/server.js .amplify-hosting/compute/default/
+        - cp package.json package-lock.json .amplify-hosting/compute/default/
+        - cp -r dist/client .amplify-hosting/compute/default/client
+        - node scripts/build-env.js .amplify-hosting/compute/default/.env
+        - cd .amplify-hosting/compute/default && npm ci --omit=dev && cd ../../..
+        - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
+  artifacts:
+    baseDirectory: .amplify-hosting
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*

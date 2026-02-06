@@ -1,0 +1,39 @@
+{
+    "version": 1,
+    "routes": [
+        {
+            "path": "/assets/*",
+            "target": {
+                "kind": "Static"
+            }
+        },
+        {
+            "path": "/*.*",
+            "target": {
+                "kind": "Static"
+            },
+            "fallback": {
+                "kind": "Compute",
+                "src": "default"
+            }
+        },
+        {
+            "path": "/*",
+            "target": {
+                "kind": "Compute",
+                "src": "default"
+            }
+        }
+    ],
+    "computeResources": [
+        {
+            "name": "default",
+            "entrypoint": "server.js",
+            "runtime": "nodejs20.x"
+        }
+    ],
+    "framework": {
+        "name": "express",
+        "version": "5.2.1"
+    }
+}

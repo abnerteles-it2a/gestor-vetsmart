@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:client": "vite build --outDir dist/client",
+    "build:server": "vite build -c vite.config.server.ts",
+    "build": "npm run build:client && npm run build:server",
     "preview": "vite preview",
+    "start": "node dist/server.js",
     "sync-docs": "node backend/scripts/init-knowledge-base.js"
   },
   "dependencies": {
