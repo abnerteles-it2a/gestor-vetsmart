@@ -8,7 +8,7 @@ async function testRAG() {
         const loginRes = await fetch('http://localhost:3001/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: 'admin@vetsmart.com', password: '123456' })
+            body: JSON.stringify({ email: 'admin@vetpro.com', password: '123456' })
         });
         
         if (!loginRes.ok) throw new Error(`Login failed: ${loginRes.status}`);

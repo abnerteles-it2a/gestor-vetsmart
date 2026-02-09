@@ -1,4 +1,4 @@
-# Relatório de Validação - Gestor Vetsmart
+# Relatório de Validação - Gestor VetPro
 **Data:** 19/01/2026
 **Responsável:** Trae AI
 **Status Geral:** ✅ Funcionalidades validadas com sucesso (Frontend/Mock)

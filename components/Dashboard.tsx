@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockDataService } from '../services/mockDataService';
+import { useNavigation } from '../context/NavigationContext';
+import { apiService } from '../services/api';
 import { getFinancialAudit, getHospitalizationRound } from '../services/vertexAiService';
 
 const data = [
@@ -14,6 +15,7 @@ const data = [
 ];
 
 const Dashboard: React.FC = () => {
+  const { navigateTo } = useNavigation();
   const [kpis, setKpis] = useState<any[]>([]);
   const [financialAudit, setFinancialAudit] = useState<any>(null);
   const [hospitalRound, setHospitalRound] = useState<any>(null);
@@ -23,76 +25,149 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const [pets, appointments, sales, inventory] = await Promise.all([
-          mockDataService.getPets(),
-          mockDataService.getAppointments(),
-          mockDataService.getSales(),
-          mockDataService.getInventory()
+        const [kpiRes, petsRes, salesRes, appointmentsRes] = await Promise.all([
+          apiService.getDashboardKPIs(),
+          apiService.getPets(),
+          apiService.getSales(),
+          apiService.getAppointments()
         ]);
 
-        const today = new Date().toISOString().split('T')[0];
+        const kpiData = kpiRes.data;
+        const pets = petsRes.data;
+        const sales = salesRes.data;
+        const appointments = appointmentsRes.data;
 
-        // 1. Consultas Hoje
-        const appointmentsToday = appointments.filter(a => a.date === today);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+        // 1. Consultas Hoje & Ontem (Delta)
+        const isSameDay = (d1: Date, d2: Date) => 
+            d1.getDate() === d2.getDate() && 
+            d1.getMonth() === d2.getMonth() && 
+            d1.getFullYear() === d2.getFullYear();
+
+        const appointmentsToday = appointments.filter((a: any) => isSameDay(new Date(a.appointment_date), today));
+        const appointmentsYesterday = appointments.filter((a: any) => isSameDay(new Date(a.appointment_date), yesterday));
+        
         const consultasHoje = appointmentsToday.length;
+        const consultasOntem = appointmentsYesterday.length;
+        const consultasDelta = consultasHoje - consultasOntem;
+        const consultasDeltaStr = `${consultasDelta > 0 ? '+' : ''}${consultasDelta} vs ontem`;
 
-        // 2. Faturamento (Mock parse)
-        const parseValue = (val: any) => {
-          if (typeof val === 'number') return val;
-          if (!val) return 0;
-          // Remove R$, espaços (incluindo nbsp), pontos de milhar
-          // Ex: "R$ 1.234,56" -> "1234.56"
-          return parseFloat(val.replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
-        };
-        const totalSales = sales.reduce((acc, s) => acc + parseValue(s.value), 0);
+        // 2. Faturamento Mês & Mês Passado (Delta)
+        const salesThisMonth = sales.filter((s: any) => {
+          const sDate = new Date(s.sale_date);
+          return sDate.getMonth() === currentMonth && sDate.getFullYear() === currentYear;
+        });
+        const salesLastMonth = sales.filter((s: any) => {
+            const sDate = new Date(s.sale_date);
+            return sDate.getMonth() === lastMonth && sDate.getFullYear() === lastMonthYear;
+        });
+
+        const totalSales = salesThisMonth.reduce((acc: number, s: any) => acc + parseFloat(s.total_amount || 0), 0);
+        const totalSalesLastMonth = salesLastMonth.reduce((acc: number, s: any) => acc + parseFloat(s.total_amount || 0), 0);
+        
+        let salesGrowth = 0;
+        if (totalSalesLastMonth > 0) {
+            salesGrowth = ((totalSales - totalSalesLastMonth) / totalSalesLastMonth) * 100;
+        } else if (totalSales > 0) {
+            salesGrowth = 100;
+        }
+        const salesDeltaStr = `${salesGrowth > 0 ? '+' : ''}${salesGrowth.toFixed(0)}% vs mês passado`;
 
         // 3. Estoque Crítico
-        const criticalItems = inventory.filter(i => i.status === 'critical').length;
+        const criticalItems = kpiData.inventoryAlerts;
 
         // 4. Receita Hoje
-        const salesToday = sales.filter(s => s.date && s.date.startsWith(today));
-        const receitaHoje = salesToday.reduce((acc, s) => acc + parseValue(s.value), 0);
+        const salesToday = sales.filter((s: any) => isSameDay(new Date(s.sale_date), today));
+        const receitaHoje = salesToday.reduce((acc: number, s: any) => acc + parseFloat(s.total_amount || 0), 0);
+
+        // 5. Novos Pets (This Week)
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const newPets = pets.filter((p: any) => new Date(p.created_at) >= oneWeekAgo).length;
+
+        // 6. Ocupação (Estimated)
+        // Assume 20 slots per day for demo purposes
+        const occupancyRate = Math.round((consultasHoje / 20) * 100);
+
+        // 7. No-Show Rate (Today vs Avg)
+        const canceledToday = appointmentsToday.filter((a: any) => a.status === 'cancelado').length;
+        const noShowRate = appointmentsToday.length > 0 ? Math.round((canceledToday / appointmentsToday.length) * 100) : 0;
+        
+        // Calculate average no-show rate for last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const last30DaysAppointments = appointments.filter((a: any) => {
+            const d = new Date(a.appointment_date);
+            return d >= thirtyDaysAgo && d < today;
+        });
+
+        let avgNoShowRate = 0;
+        if (last30DaysAppointments.length > 0) {
+            const canceledLast30 = last30DaysAppointments.filter((a: any) => a.status === 'cancelado').length;
+            avgNoShowRate = Math.round((canceledLast30 / last30DaysAppointments.length) * 100);
+        }
+
+        const noShowDelta = noShowRate - avgNoShowRate;
+        const noShowDeltaStr = `${noShowDelta > 0 ? '+' : ''}${noShowDelta}% vs média (30d)`;
+
+        // 8. Aniversariantes (Today)
+        const birthdays = pets.filter((p: any) => {
+          if (!p.birth_date) return false;
+          const bdate = new Date(p.birth_date);
+          // Adjust for timezone if needed, but simple match is fine for demo
+          return bdate.getDate() === today.getDate() && bdate.getMonth() === today.getMonth();
+        }).length;
+
 
         setKpis([
           {
             label: 'Consultas Hoje',
             value: consultasHoje.toString(),
-            icon: 'fa-user-doctor', // Changed to doctor icon
+            icon: 'fa-user-doctor', 
             badge: 'Agenda',
             iconClass: 'bg-blue-100 text-blue-600',
-            delta: '+2 vs ontem',
-            detail: `${appointmentsToday.filter(a => a.status === 'agendado').length} em espera • ${appointmentsToday.filter(a => a.status === 'concluido').length} concluídas`,
-            trend: 'up' // Added trend indicator logic helper later
+            delta: consultasDeltaStr,
+            detail: `${appointmentsToday.filter((a: any) => a.status === 'agendado').length} em espera • ${appointmentsToday.filter((a: any) => a.status === 'concluido').length} concluídas`,
+            trend: consultasDelta >= 0 ? 'up' : 'down' 
           },
           {
-            label: 'Faturamento Mês', // Changed label
+            label: 'Faturamento Mês', 
             value: totalSales.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-            icon: 'fa-sack-dollar', // Changed icon
+            icon: 'fa-sack-dollar', 
             badge: 'Financeiro',
             iconClass: 'bg-emerald-100 text-emerald-600',
-            delta: '+12% vs mês passado',
-            detail: `Ticket médio: ${(totalSales / (sales.length || 1)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
-            trend: 'up'
+            delta: salesDeltaStr,
+            detail: `Ticket médio: ${(salesThisMonth.length > 0 ? totalSales / salesThisMonth.length : 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
+            trend: salesGrowth >= 0 ? 'up' : 'down'
           },
           {
-            label: 'Novos Pets', // Changed label
-            value: pets.length.toString(),
+            label: 'Novos Pets', 
+            value: pets.length.toString(), // Show total base
             icon: 'fa-paw',
             badge: 'Base de Clientes',
             iconClass: 'bg-purple-100 text-purple-600',
-            delta: '+3 novos esta semana',
+            delta: `+${newPets} novos esta semana`,
             detail: 'Clientes ativos',
             trend: 'up'
           },
           {
-            label: 'Alerta Estoque', // Changed label
+            label: 'Alerta Estoque', 
             value: `${criticalItems} itens`,
             icon: 'fa-triangle-exclamation',
             badge: 'Estoque',
             iconClass: 'bg-amber-100 text-amber-600',
             delta: 'Itens críticos',
             detail: 'Sugestão: revisar compras',
-            trend: 'down'
+            trend: criticalItems > 0 ? 'down' : 'neutral'
           },
           {
             label: 'Receita Hoje',
@@ -100,34 +175,34 @@ const Dashboard: React.FC = () => {
             icon: 'fa-chart-line',
             badge: 'Financeiro',
             iconClass: 'bg-sky-100 text-sky-600',
-            delta: '+5% vs ontem',
-            detail: `${salesToday.length} vendas registradas`,
+            delta: 'Atualizado agora',
+            detail: `${salesToday.length} vendas hoje`,
             trend: 'up'
           },
           {
             label: 'Ocupação da Agenda',
-            value: '82%',
+            value: `${occupancyRate}%`,
             icon: 'fa-calendar-check',
             badge: 'Produtividade',
             iconClass: 'bg-indigo-100 text-indigo-600',
-            delta: 'Alta demanda',
-            detail: '2 horários livres hoje',
+            delta: occupancyRate > 80 ? 'Alta demanda' : 'Normal',
+            detail: `${Math.max(0, 20 - consultasHoje)} horários livres hoje`,
             trend: 'neutral'
           },
           {
             label: 'Taxa de No-Show',
-            value: '2%', // Realism tweak
-            icon: 'fa-user-slash', // Changed icon
+            value: `${noShowRate}%`, 
+            icon: 'fa-user-slash', 
             badge: 'Qualidade',
             iconClass: 'bg-rose-100 text-rose-600',
-            delta: '-1% vs média',
-            detail: '1 cancelamento hoje',
-            trend: 'up' // positive outcome (lower is better)
+            delta: noShowDeltaStr,
+            detail: `${canceledToday} cancelamentos hoje`,
+            trend: noShowDelta <= 0 ? 'up' : 'down' // Lower is better for no-show
           },
           {
             label: 'Aniversariantes',
-            value: '1 pet',
-            icon: 'fa-cake-candles', // Changed icon
+            value: `${birthdays} pet${birthdays !== 1 ? 's' : ''}`,
+            icon: 'fa-cake-candles', 
             badge: 'Relacionamento',
             iconClass: 'bg-pink-100 text-pink-600',
             delta: 'Hoje',
@@ -146,8 +221,8 @@ const Dashboard: React.FC = () => {
 
     // Load AI Audit independently with caching
     const loadAiData = async () => {
-      const CACHE_KEY = 'vetsmart_financial_audit';
-      const CACHE_TS_KEY = 'vetsmart_financial_audit_ts';
+      const CACHE_KEY = 'vetpro_financial_audit';
+      const CACHE_TS_KEY = 'vetpro_financial_audit_ts';
       const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
       const cachedData = localStorage.getItem(CACHE_KEY);
@@ -169,7 +244,14 @@ const Dashboard: React.FC = () => {
         }
 
         // 2. Hospital Round
-        const hospitalizationData = await mockDataService.getHospitalization();
+        let hospitalizationData = [];
+        try {
+           const hospRes = await apiService.getHospitalizations();
+           hospitalizationData = hospRes.data;
+        } catch (e) {
+           console.warn('Failed to fetch hospitalizations, using empty list');
+        }
+        
         const round = await getHospitalizationRound(hospitalizationData);
         setHospitalRound(round);
 
@@ -187,44 +269,45 @@ const Dashboard: React.FC = () => {
 
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 lg:space-y-8">
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6 xl:gap-8">
         {kpis.map((kpi, idx) => (
           <div
             key={idx}
-            className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group"
+            className={`bg-white dark:bg-slate-900 p-4 lg:p-5 xl:p-6 2xl:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden`}
           >
-            <div className="flex items-start justify-between mb-4">
+            <div className={`absolute top-0 left-0 w-1.5 h-full ${kpi.iconClass.replace('bg-', 'bg-').replace('text-', 'bg-').split(' ')[1].replace('text-', 'bg-')}`}></div>
+            <div className="flex items-start justify-between mb-2 lg:mb-3 xl:mb-4 2xl:mb-6 pl-2">
               <div
-                className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${kpi.iconClass} group-hover:scale-110 transition-transform duration-300`}
+                className={`w-10 h-10 lg:w-12 lg:h-12 xl:w-13 xl:h-13 2xl:w-16 2xl:h-16 rounded-2xl flex items-center justify-center text-lg lg:text-xl xl:text-xl 2xl:text-3xl ${kpi.iconClass} shadow-sm group-hover:scale-110 transition-transform duration-300`}
               >
                 <i className={`fas ${kpi.icon}`}></i>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-full">
+              <span className="text-[9px] lg:text-[10px] xl:text-[11px] 2xl:text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 px-2 py-1 xl:px-2.5 xl:py-1 2xl:px-3 2xl:py-1.5 rounded-full">
                 {kpi.badge}
               </span>
             </div>
 
-            <div className="space-y-1">
-              <p className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+            <div className="space-y-1 xl:space-y-1.5 2xl:space-y-2">
+              <p className="text-[9px] lg:text-[10px] xl:text-[11px] 2xl:text-sm font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
                 {kpi.label}
               </p>
               <div className="flex items-end gap-2">
-                <h3 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
+                <h3 className="text-xl lg:text-2xl xl:text-2xl 2xl:text-4xl font-extrabold text-slate-800 dark:text-slate-100">
                   {kpi.value}
                 </h3>
               </div>
 
-              <div className="flex items-center gap-2 mt-2">
-                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${kpi.trend === 'down' ? 'bg-red-50 text-red-600 dark:bg-red-900/20' :
+              <div className="flex items-center gap-2 mt-2 xl:mt-2.5 2xl:mt-3">
+                <span className={`text-[10px] lg:text-xs xl:text-xs 2xl:text-sm font-bold px-1.5 py-0.5 xl:px-1.5 xl:py-0.5 2xl:px-2 2xl:py-1 rounded ${kpi.trend === 'down' ? 'bg-red-50 text-red-600 dark:bg-red-900/20' :
                     kpi.trend === 'neutral' ? 'bg-slate-50 text-slate-600 dark:bg-slate-800' :
                       'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20'
                   }`}>
                   {kpi.delta.includes('+') || kpi.trend === 'up' ? '↗' : kpi.delta.includes('-') ? '↘' : '•'} {kpi.delta}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 pl-0.5">
+              <p className="text-[10px] lg:text-xs xl:text-xs 2xl:text-sm text-slate-400 dark:text-slate-500 mt-1 xl:mt-1.5 2xl:mt-2 pl-0.5 truncate">
                 {kpi.detail}
               </p>
             </div>
@@ -232,19 +315,19 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
+        <div className="xl:col-span-2 space-y-6 lg:space-y-8">
           {/* Weekly Appointments Chart */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-slate-800 dark:text-slate-100">Fluxo de Consultas Semanais</h3>
-              <select className="bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm px-3 py-1 outline-none text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <div className="bg-white dark:bg-slate-900 p-4 lg:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md">
+            <div className="flex items-center justify-between mb-4 lg:mb-6">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm lg:text-base">Fluxo de Consultas Semanais</h3>
+              <select className="bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs lg:text-sm px-3 py-1 outline-none text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                 <option>Últimos 7 dias</option>
                 <option>Último mês</option>
               </select>
             </div>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-56 lg:h-64 xl:h-72 w-full flex items-center justify-center min-h-[14rem] lg:min-h-[16rem]">
+              <ResponsiveContainer width="100%" height="100%" minHeight={200}>
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.1} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
@@ -264,224 +347,69 @@ const Dashboard: React.FC = () => {
               </ResponsiveContainer>
             </div>
           </div>
-
-          {/* Fidelity Analysis - ENHANCED */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <i className="fas fa-bullseye text-blue-500"></i> Análise de Fidelidade
-              </h3>
-              <button className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors">
-                Ver BI Completo
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Clientes Inativos */}
-              <div className="relative">
-                <div className="flex justify-between items-end mb-2">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">⚠️ Clientes Inativos</p>
-                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">12 <span className="text-sm font-normal text-slate-500">tutores</span></p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">Última visita &gt; 6 meses</span>
-                  </div>
-                </div>
-                <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-amber-500 rounded-full" style={{ width: '35%' }}></div>
-                </div>
-                <div className="mt-3 flex justify-end">
-                  <button className="flex items-center gap-2 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-lg transition-colors shadow-sm shadow-amber-200 dark:shadow-none">
-                    <i className="fas fa-paper-plane"></i> Gerar Campanha de Reativação
-                  </button>
-                </div>
-              </div>
-
-              <div className="h-px bg-slate-100 dark:bg-slate-800"></div>
-
-              {/* Clientes em Risco */}
-              <div className="relative">
-                <div className="flex justify-between items-end mb-2">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">🟡 Clientes em Risco</p>
-                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">08 <span className="text-sm font-normal text-slate-500">tutores</span></p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 rounded">Visita 3-6 meses</span>
-                  </div>
-                </div>
-                <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-yellow-400 rounded-full" style={{ width: '20%' }}></div>
-                </div>
-                <div className="mt-3 flex justify-end">
-                  <button className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 px-4 py-2 rounded-lg transition-colors">
-                    <i className="fas fa-bell"></i> Enviar Lembrete Automático
-                  </button>
-                </div>
-              </div>
-
-              <div className="h-px bg-slate-100 dark:bg-slate-800"></div>
-
-              {/* Clientes VIP */}
-              <div className="relative">
-                <div className="flex justify-between items-end mb-2">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">⭐ Clientes VIP</p>
-                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">24 <span className="text-sm font-normal text-slate-500">tutores</span></p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded">R$ 45k/ano</span>
-                  </div>
-                </div>
-                <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: '65%' }}></div>
-                </div>
-                <div className="mt-3 flex justify-end">
-                  <button className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors">
-                    <i className="fas fa-gift"></i> Ver Benefícios VIP
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div className="space-y-6">
-          {/* AI Hospital Ward Round - NEW FEATURE */}
-          {aiLoading ? (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm animate-pulse">
-              <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded mb-4"></div>
-              <div className="space-y-3">
-                <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded-xl"></div>
-              </div>
-            </div>
-          ) : hospitalRound && (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border-l-4 border-purple-500 shadow-lg relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center text-purple-600">
-                    <i className="fas fa-bed-pulse"></i>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Ronda Inteligente (24h)</h3>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Monitoramento em Tempo Real</p>
-                  </div>
-                </div>
-                <div className="animate-pulse w-2 h-2 bg-purple-500 rounded-full"></div>
-              </div>
-
-              <div className="mb-3 bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800">
-                <p className="text-xs font-bold text-purple-700 dark:text-purple-300">
-                  <i className="fas fa-circle-info mr-1"></i> Resumo do Plantão
-                </p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                  {hospitalRound.round_summary}
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                {hospitalRound.patient_analysis?.map((patient: any, idx: number) => (
-                  <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700 relative">
-                    <div className="flex justify-between items-start mb-1">
-                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{patient.patient_name}</p>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${patient.risk_score > 7 ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}>
-                        Risco: {patient.risk_score}/10
-                      </span>
+        {/* Side Panel (AI Insights or Notifications could go here) */}
+         <div className="space-y-6">
+            {financialAudit && (
+                <div className="bg-gradient-to-br from-indigo-900 to-purple-900 p-6 rounded-2xl shadow-lg text-white">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                            <i className="fas fa-robot text-indigo-200"></i>
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg">VetSmart AI</h3>
+                            <p className="text-xs text-indigo-200">Auditoria Financeira</p>
+                        </div>
                     </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mb-2 leading-snug">
-                      {patient.trend_alert}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button className="flex-1 text-[10px] font-bold text-white bg-purple-600 hover:bg-purple-700 py-1.5 rounded transition-colors">
-                        Ver Prontuário
-                      </button>
-                      <button className="flex-1 text-[10px] font-bold text-purple-600 bg-purple-50 hover:bg-purple-100 py-1.5 rounded transition-colors">
-                        Confirmar Ação
-                      </button>
+                    <div className="space-y-4">
+                        <div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/10">
+                            <p className="text-sm font-medium text-indigo-100 mb-1">Análise de Receita</p>
+                            <p className="text-xs text-indigo-200 leading-relaxed">
+                                {financialAudit.revenue_analysis || "Analisando dados financeiros..."}
+                            </p>
+                        </div>
+                        <div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/10">
+                            <p className="text-sm font-medium text-indigo-100 mb-1">Sugestões de Otimização</p>
+                            <ul className="text-xs text-indigo-200 space-y-2">
+                                {(financialAudit.optimization_suggestions || []).slice(0, 3).map((s: string, i: number) => (
+                                    <li key={i} className="flex gap-2">
+                                        <span className="text-indigo-400">•</span>
+                                        {s}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* AI Financial Auditor */}
-          {financialAudit && (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border-l-4 border-red-500 shadow-lg relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600">
-                    <i className="fas fa-magnifying-glass-dollar"></i>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Auditoria Financeira</h3>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">IA Ativa • Revenue Leakage</p>
-                  </div>
                 </div>
-                <div className="animate-pulse w-2 h-2 bg-red-500 rounded-full"></div>
-              </div>
-
-              <div className="space-y-3">
-                {financialAudit.leakage_alerts?.slice(0, 2).map((alert: any, idx: number) => (
-                  <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mb-2 leading-snug">
-                      <i className="fas fa-triangle-exclamation text-amber-500 mr-1"></i> {alert.description}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
-                        -{alert.estimated_loss}
-                      </span>
-                      <button className="text-[10px] font-bold text-blue-600 hover:text-blue-700 underline">
-                        Resolver
-                      </button>
+            )}
+             {hospitalRound && (
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md">
+                    <div className="flex items-center gap-3 mb-4">
+                         <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <i className="fas fa-notes-medical text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-800 dark:text-slate-100">Round Hospitalar</h3>
+                            <p className="text-xs text-slate-500">Resumo de pacientes internados</p>
+                        </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-2xl shadow-xl text-white">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                <i className="fas fa-robot text-lg"></i>
-              </div>
-              <h3 className="font-bold">Insights da IA</h3>
-            </div>
-            <div className="space-y-4">
-              <div className="bg-white/10 p-4 rounded-xl border border-white/10">
-                <p className="text-xs text-blue-200 uppercase font-bold mb-1">Dica de Recorrência</p>
-                <p className="text-sm">"Thor (Golden Retriever) está com vermífugo vencendo em 3 dias. Enviar lembrete via WhatsApp?"</p>
-                <button className="mt-3 w-full bg-white text-blue-700 py-2 rounded-lg text-xs font-bold hover:bg-blue-50">Enviar agora</button>
-              </div>
-              <div className="bg-white/10 p-4 rounded-xl border border-white/10">
-                <p className="text-xs text-blue-200 uppercase font-bold mb-1">Previsão de Estoque</p>
-                <p className="text-sm">"Vacina V10 pode acabar em 5 dias se o ritmo de consultas continuar."</p>
-                <button className="mt-3 w-full border border-white/30 text-white py-2 rounded-lg text-xs font-bold hover:bg-white/10">Ver estoque</button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4">Agendamentos Próximos</h4>
-            <div className="space-y-4">
-              {[
-                { time: '09:00', pet: 'Luna', type: 'Gato' },
-                { time: '10:30', pet: 'Thor', type: 'Cão' },
-              ].map((app, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-blue-600 text-sm">{app.time}</span>
-                    <span className="text-sm text-slate-700 dark:text-slate-200 font-medium">{app.pet}</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">{app.type}</span>
+                     <div className="prose prose-sm dark:prose-invert max-w-none text-xs text-slate-600 dark:text-slate-300">
+                         <p>{hospitalRound.summary}</p>
+                         {hospitalRound.critical_cases?.length > 0 && (
+                             <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800/30">
+                                 <strong className="text-red-700 dark:text-red-400 block mb-1">Atenção Necessária:</strong>
+                                 <ul className="list-disc pl-4 space-y-1">
+                                     {hospitalRound.critical_cases.map((c: string, i: number) => (
+                                         <li key={i}>{c}</li>
+                                     ))}
+                                 </ul>
+                             </div>
+                         )}
+                     </div>
                 </div>
-              ))}
-              <button className="w-full text-xs font-bold text-slate-400 dark:text-slate-500 py-2 hover:text-blue-600 transition-colors uppercase tracking-widest">Ver Agenda Completa</button>
-            </div>
-          </div>
-        </div>
+            )}
+         </div>
       </div>
     </div>
   );

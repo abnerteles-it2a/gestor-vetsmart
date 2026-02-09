@@ -149,6 +149,7 @@ export const getHospitalizationRound = async (patients: any[]): Promise<any> => 
         round_summary: "Plantão estável (Simulado), atenção ao Box 2.",
         patient_analysis: [
             {
+                patient_id: "1",
                 patient_name: "Rex",
                 risk_score: 8,
                 trend_alert: "ALERTA: FC subindo (100->140). Sinais de Choque.",

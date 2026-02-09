@@ -1,9 +1,22 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
 
 :root {
   font-family: 'Inter', sans-serif;
+  font-size: 14px; /* Base size for laptops/notebooks (compact) */
+}
+
+@media (min-width: 1280px) { /* XL screens */
+  :root {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 1536px) { /* 2XL screens (Ultra Wide) */
+  :root {
+    font-size: 16px;
+  }
 }
 
 body {

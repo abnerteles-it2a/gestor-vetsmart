@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useNavigation } from '../context/NavigationContext';
 import { analyzeClinicalCase, analyzeDiagnosticImage } from '../services/vertexAiService';
-import { mockDataService } from '../services/mockDataService';
+import { apiService } from '../services/api';
 import { openWhatsApp } from '../utils/whatsappUtils';
 
 const AdvancedAiModule: React.FC = () => {
@@ -8,15 +9,20 @@ const AdvancedAiModule: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [pets, setPets] = useState<any[]>([]);
-  const [selectedPetId, setSelectedPetId] = useState<string>('1');
+  const [selectedPetId, setSelectedPetId] = useState<string>('');
 
   // Load pets on mount
   React.useEffect(() => {
     const fetchPets = async () => {
-        const allPets = await mockDataService.getPets();
-        setPets(allPets);
-        if (allPets.length > 0 && !selectedPetId) {
-            setSelectedPetId(allPets[0].id);
+        try {
+            const response = await apiService.getPets();
+            const allPets = response.data;
+            setPets(allPets);
+            if (allPets.length > 0 && !selectedPetId) {
+                setSelectedPetId(allPets[0].id);
+            }
+        } catch (error) {
+            console.error('Error fetching pets:', error);
         }
     };
     fetchPets();
@@ -66,28 +72,35 @@ const AdvancedAiModule: React.FC = () => {
   const handleSaveRecord = async () => {
     if (!clinicalResult) return;
     
-    // Saving to Mock Store (Thor - ID 1)
-    await mockDataService.saveMedicalRecord({
-        petId: '1', 
-        vetName: 'Dr. Usuário', 
-        subjective: clinicalResult.structured_soap.s,
-        objective: clinicalResult.structured_soap.o,
-        assessment: clinicalResult.structured_soap.a,
-        plan: clinicalResult.structured_soap.p,
-        diagnosis: clinicalResult.structured_soap.a.split('.')[0], 
-        urgency: 'Rotina'
-    });
-    
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    // Saving to Database via API
+    try {
+        await apiService.createMedicalRecord({
+            pet_id: selectedPetId, 
+            vet_id: '1', // Hardcoded current user for now
+            date: new Date().toISOString().split('T')[0],
+            soap_s: clinicalResult.structured_soap.s,
+            soap_o: clinicalResult.structured_soap.o,
+            soap_a: clinicalResult.structured_soap.a,
+            soap_p: clinicalResult.structured_soap.p,
+            diagnosis: clinicalResult.structured_soap.a.split('.')[0], 
+            notes: 'Gerado via VetSmart AI'
+        });
+        
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+        console.error('Error saving record:', error);
+        alert('Erro ao salvar prontuário.');
+    }
   };
 
   const loadHistory = async () => {
-      console.log('Loading history for pet 1...');
+      if (!selectedPetId) return;
+      console.log(`Loading history for pet ${selectedPetId}...`);
       try {
-        const records = await mockDataService.getMedicalRecords('1');
-        console.log('Records loaded:', records);
-        setHistory(records);
+        const response = await apiService.getMedicalRecords(selectedPetId);
+        console.log('Records loaded:', response.data);
+        setHistory(response.data);
       } catch (e) {
         console.error('Error loading history', e);
       }
@@ -97,10 +110,10 @@ const AdvancedAiModule: React.FC = () => {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <header className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-            VetSmart AI Copilot <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-2 align-middle">BETA</span>
+          <h1 className="text-2xl xl:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
+            VetSmart AI Copilot <span className="text-[10px] xl:text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-2 align-middle">BETA</span>
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Assistente avançado para documentação clínica e diagnóstico por imagem.</p>
+          <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 mt-1">Assistente avançado para documentação clínica e diagnóstico por imagem.</p>
           
           <div className="mt-4 flex items-center gap-2">
             <label className="text-sm font-bold text-slate-600 dark:text-slate-300">Paciente Atual:</label>
@@ -179,7 +192,7 @@ const AdvancedAiModule: React.FC = () => {
               <div className="h-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-12 relative">
                 <i className="fas fa-file-medical text-6xl mb-4 opacity-20"></i>
                 <p className="font-medium">O prontuário estruturado aparecerá aqui.</p>
-                <p className="text-xs mt-2 opacity-60 max-w-[200px] text-center">Após gerar, você poderá salvar no histórico do paciente.</p>
+                <p className="text-xs mt-2 opacity-60 max-w-48 text-center">Após gerar, você poderá salvar no histórico do paciente.</p>
                 
                 {/* Placeholder Save Button to show feature existence */}
                 <button disabled className="mt-6 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-lg text-sm font-bold cursor-not-allowed flex items-center gap-2">
@@ -247,7 +260,7 @@ const AdvancedAiModule: React.FC = () => {
                             {clinicalResult.suggested_billing?.map((item: any, idx: number) => (
                                 <li key={idx} className="flex justify-between items-center text-sm p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
                                     <span className="text-slate-700 dark:text-slate-300">{item.item}</span>
-                                    {item.reason && <span className="text-[10px] text-slate-400 max-w-[100px] truncate" title={item.reason}>{item.reason}</span>}
+                                    {item.reason && <span className="text-[10px] text-slate-400 max-w-24 truncate" title={item.reason}>{item.reason}</span>}
                                     <i className="fas fa-check-circle text-emerald-500"></i>
                                 </li>
                             ))}

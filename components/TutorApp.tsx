@@ -95,7 +95,7 @@ const TutorApp: React.FC = () => {
                        <p className="text-xs text-slate-500 dark:text-slate-400">{pet.breed}</p>
                     </div>
                   ))}
-                  <button className="min-w-[60px] flex flex-col items-center justify-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+                  <button className="min-w-16 flex flex-col items-center justify-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
                      <div className="w-12 h-12 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-400">
                         <i className="fas fa-plus"></i>
                      </div>
@@ -182,7 +182,7 @@ const TutorApp: React.FC = () => {
   return (
     <div className="flex justify-center items-start min-h-full bg-slate-100 dark:bg-slate-950 p-4 md:p-8">
        {/* Mobile Device Frame Simulator */}
-       <div className="w-full max-w-[375px] h-[812px] bg-slate-50 dark:bg-slate-900 rounded-[3rem] border-[8px] border-slate-900 dark:border-slate-800 shadow-2xl overflow-hidden relative flex flex-col">
+       <div className="w-full max-w-[375px] h-[80vh] max-h-[812px] bg-slate-50 dark:bg-slate-900 rounded-[3rem] border-[8px] border-slate-900 dark:border-slate-800 shadow-2xl overflow-hidden relative flex flex-col">
           {/* Dynamic Island / Notch */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-slate-900 rounded-b-xl z-50"></div>
           

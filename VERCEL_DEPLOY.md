@@ -1,6 +1,6 @@
 # Guia de Implantação Fullstack na Vercel
 
-Este guia descreve o processo para implantar o **Gestor Vetsmart** completo (Frontend + Backend) na Vercel.
+Este guia descreve o processo para implantar o **Gestor VetPro** completo (Frontend + Backend) na Vercel.
 
 ## Visão Geral
 
@@ -31,7 +31,7 @@ Antes do deploy, você precisa de um banco de dados acessível publicamente.
 ### 2. Importar Projeto na Vercel
 
 1. Acesse o dashboard da Vercel e clique em **"Add New..."** -> **"Project"**.
-2. Selecione o repositório `gestor-vetsmart`.
+2. Selecione o repositório `gestor-vetpro`.
 3. A Vercel detectará automaticamente o framework `Vite`.
 4. Mantenha as configurações de build padrão (`npm run build`, `dist`).
 
@@ -59,7 +59,7 @@ Configure as seguintes variáveis no painel da Vercel (Settings -> Environment V
 
 ### 5. Validação Pós-Deploy
 
-1. Acesse a URL do projeto (ex: `https://gestor-vetsmart.vercel.app`).
+1. Acesse a URL do projeto (ex: `https://gestor-vetpro.vercel.app`).
 2. Tente fazer Login. O frontend tentará conectar em `/api/login`.
    - Se o banco estiver configurado e as tabelas criadas (o backend tenta criar tabelas ao iniciar), funcionará.
 3. Se o backend falhar (erro 500 ou timeout), o frontend usará o **Modo Fallback (Mock)** automaticamente, permitindo testar a interface mesmo sem banco.

@@ -18,11 +18,12 @@ import CampaignsModule from './components/CampaignsModule';
 import TutorApp from './components/TutorApp';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import Login from './components/Login';
 
 const MainLayout: React.FC = () => {
   const { user, logout, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { activeTab, setActiveTab, navigateTo } = useNavigation();
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === 'undefined') return false;
     const stored = window.localStorage.getItem('theme');
@@ -68,7 +69,7 @@ const MainLayout: React.FC = () => {
       case 'advanced-ai': return <AdvancedAiModule />;
       case 'inventory': return <InventoryModule />;
       case 'financial': return <FinancialModule />;
-      case 'agenda': return <AgendaModule onNavigate={setActiveTab} />;
+      case 'agenda': return <AgendaModule />;
       case 'patients': return <PatientsModule />;
       case 'sales': return <SalesModule />;
       case 'campaigns': return <CampaignsModule />;
@@ -110,7 +111,7 @@ const MainLayout: React.FC = () => {
                 {getTitle()}
               </h2>
               <p className="text-[10px] text-slate-400 font-medium uppercase mt-1">
-                Gestor Vetsmart - Gestão veterinária inteligente com IA
+                Gestor VetPro - Gestão veterinária inteligente com IA
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -144,7 +145,7 @@ const MainLayout: React.FC = () => {
           
           <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-4 text-center">
             <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium uppercase tracking-[0.16em]">
-              Gestor Vetsmart © 2026
+              Gestor VetPro © 2026
             </p>
           </footer>
         </div>
@@ -155,9 +156,11 @@ const MainLayout: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <MainLayout />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <MainLayout />
+        </ToastProvider>
+      </NavigationProvider>
     </AuthProvider>
   );
 };

@@ -1,4 +1,4 @@
--- Banco de Dados para Gestor Vetsmart
+-- Banco de Dados para Gestor VetPro
 -- Sistema de Gestão Veterinária
 
 -- Tabela de Usuários (Veterinários, Recepcionistas, Administradores)
@@ -102,6 +102,22 @@ CREATE TABLE IF NOT EXISTS vaccinations (
     batch_number VARCHAR(50),
     vet_id INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de Prontuários Médicos (Medical Records)
+CREATE TABLE IF NOT EXISTS medical_records (
+    id SERIAL PRIMARY KEY,
+    pet_id INTEGER REFERENCES pets(id) ON DELETE CASCADE,
+    vet_id INTEGER REFERENCES users(id),
+    date TIMESTAMP NOT NULL,
+    subjective TEXT, -- S
+    objective TEXT,  -- O
+    assessment TEXT, -- A
+    plan TEXT,       -- P
+    diagnosis VARCHAR(255),
+    urgency VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Índices para otimização

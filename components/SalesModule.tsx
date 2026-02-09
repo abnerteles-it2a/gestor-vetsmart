@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { NewSaleModal } from './NewItemModals';
-import { mockDataService } from '../services/mockDataService';
+import { apiService } from '../services/api';
 
 const SalesModule: React.FC = () => {
   const [showNewSaleModal, setShowNewSaleModal] = useState(false);
@@ -10,9 +10,15 @@ const SalesModule: React.FC = () => {
 
   // Derived state for KPIs
   const { totalSales, salesCount, ticketAverage } = React.useMemo(() => {
-    const validSales = sales.filter(s => s.status === 'concluído');
+    const validSales = sales.filter(s => s.status === 'concluido' || s.status === 'concluído');
     const total = validSales.reduce((acc, curr) => {
-      const val = parseFloat(curr.value.replace('R$ ', '').replace('.', '').replace(',', '.'));
+      // If value is a string (mock), parse it. If number (real), use it.
+      let val = 0;
+      if (typeof curr.value === 'number') {
+        val = curr.value;
+      } else if (typeof curr.value === 'string') {
+        val = parseFloat(curr.value.replace('R$ ', '').replace('.', '').replace(',', '.'));
+      }
       return acc + (isNaN(val) ? 0 : val);
     }, 0);
     return {
@@ -26,14 +32,14 @@ const SalesModule: React.FC = () => {
     const loadSales = async () => {
       setIsLoading(true);
       try {
-        // Use MockDataService for Demo Mode
-        const data = await mockDataService.getSales();
+        const response = await apiService.getSales();
+        const data = response.data;
         const mapped = data.map((s: any) => ({
             id: s.id,
-            date: s.date,
-            desc: s.desc,
-            value: s.value,
-            payment: s.payment,
+            date: new Date(s.sale_date).toLocaleDateString('pt-BR') + ' ' + new Date(s.sale_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            desc: `Venda #${s.id}`, // Generic description as items are not in the main list query yet
+            value: parseFloat(s.total_amount),
+            payment: s.payment_method,
             status: s.status
         }));
         setSales(mapped);
@@ -47,7 +53,17 @@ const SalesModule: React.FC = () => {
   }, []);
 
   const handleNewSaleSaved = (sale: any) => {
-    setSales((prev) => [sale, ...prev]);
+    // Determine format based on whether it came from API (real) or Mock
+    // The modal will likely return the real object structure after refactor
+    const mappedSale = {
+        id: sale.id,
+        date: new Date(sale.sale_date || new Date()).toLocaleDateString('pt-BR') + ' ' + new Date(sale.sale_date || new Date()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        desc: `Venda #${sale.id}`,
+        value: parseFloat(sale.total_amount),
+        payment: sale.payment_method,
+        status: sale.status
+    };
+    setSales((prev) => [mappedSale, ...prev]);
   };
 
   return (
@@ -120,7 +136,9 @@ const SalesModule: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{sale.desc}</td>
-                <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">{sale.value}</td>
+                <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">
+                  {sale.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </td>
                 <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
                    <div className="flex items-center gap-2">
                       <i className={`fas ${sale.payment === 'Pix' ? 'fa-qrcode' : 'fa-credit-card'} text-slate-500 dark:text-slate-500`}></i>
@@ -129,7 +147,7 @@ const SalesModule: React.FC = () => {
                 </td>
                 <td className="px-6 py-4">
                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                    sale.status === 'concluído'
+                    (sale.status === 'concluído' || sale.status === 'concluido')
                       ? 'bg-green-50 text-green-600 dark:bg-green-500/20 dark:text-green-300'
                       : 'bg-red-50 text-red-600 dark:bg-red-500/20 dark:text-red-300'
                    }`}>

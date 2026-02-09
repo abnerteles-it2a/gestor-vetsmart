@@ -1,7 +1,7 @@
 {
-  "name": "gestor-vetsmart-api",
+  "name": "gestor-vetpro-api",
   "version": "1.0.0",
-  "description": "API Backend para Gestor Vetsmart",
+  "description": "API Backend para Gestor VetPro",
   "main": "server.js",
   "type": "module",
   "scripts": {

@@ -155,8 +155,8 @@ FOTO DO PET:
 ✓ Galeria de imagens (progresso tratamentos)
 1.6 Remover Branding Duplicado 🔴 URGENTE
 text
-- GESTOR VETSMART • BY IT2A ECOSYSTEM © 2026
-+ Gestor Vetsmart © 2026
+- GESTOR VETPRO • BY IT2A ECOSYSTEM © 2026
++ Gestor VetPro © 2026
 💡 FASE 2: FUNCIONALIDADES ESSENCIAIS (3-4 SEMANAS) 🟠 ALTO
 2.1 Módulo Internação/Hospitalização
 jsx
@@ -334,7 +334,7 @@ CALENDÁRIO VACINAL AUTOMÁTICO:
 └────────────────────────────────────┘
 📱 FASE 3: APP MOBILE PARA TUTORES (4-6 SEMANAS) 🟡 MÉDIO
 jsx
-APP "VETSMART TUTOR" (iOS/Android)
+APP "VETPRO TUTOR" (iOS/Android)
 
 TELA INICIAL:
 ┌────────────────────────────────┐
@@ -533,7 +533,7 @@ jsx
 │ ⚠️ Laudar com veterinário          │
 └────────────────────────────────────┘
 🎯 DIFERENCIAIS COMPETITIVOS ESPECÍFICOS VETERINÁRIO
-🚀 O QUE TORNA GESTOR VETSMART ÚNICO:
+🚀 O QUE TORNA GESTOR VETPRO ÚNICO:
 text
 1. **IA NATIVA EM TODA JORNADA** 🤖
    vs Concorrentes: Add-on caro ou inexistente
@@ -678,7 +678,7 @@ CÁLCULO DE RECEITA POTENCIAL:
 TOTAL: R$ 74.020/mês = R$ 888.240/ano
 
 Com 1.000 clínicas: ~R$ 3,7M/ano ARR
-📊 COMPARATIVO FINAL: GESTOR VETSMART vs MERCADO
+📊 COMPARATIVO FINAL: GESTOR VETPRO vs MERCADO
 Feature	VetSmart	Nuvem Vet	Vet Manager	Animati	Seu App
 Prontuário Digital	✅	✅	✅	✅	✅
 Agenda	✅	✅	✅	✅	✅
@@ -694,7 +694,7 @@ Planos Pet	❌	⚠️ Manual	❌	⚠️ Básico	🚀 Automático
 UX Moderna	🟡 Ok	🟠 Datada	🟡 Ok	🟢 Boa	🚀 Excelente
 Preço/mês	R$ 250+	R$ 300+	R$ 280+	R$ 220+	💰 R$ 189-389
 VEREDITO FINAL:
-Com IA nativa + Análise de Fidelidade + UX moderna + Preço competitivo, o Gestor Vetsmart tem potencial para ser líder de mercado na categoria de clínicas pequenas e médias.
+Com IA nativa + Análise de Fidelidade + UX moderna + Preço competitivo, o Gestor VetPro tem potencial para ser líder de mercado na categoria de clínicas pequenas e médias.
 
 🏁 RESUMO EXECUTIVO - PRÓXIMOS PASSOS
 📋 CHECKLIST DE IMPLEMENTAÇÃO PRIORITÁRIA
@@ -737,7 +737,7 @@ text
 - [ ] Predição de doenças (Machine Learning)
 - [ ] Personalização por perfil de clínica
 🎯 MENSAGEM FINAL
-✨ GESTOR VETSMART TEM BASE SÓLIDA E POTENCIAL ENORME!
+✨ GESTOR VETPRO TEM BASE SÓLIDA E POTENCIAL ENORME!
 O QUE JÁ ESTÁ EXCELENTE:
 ✅ IA integrada nos Insights (melhor que qualquer concorrente)
 ✅ Análise de Fidelidade (ÚNICO no mercado!)
@@ -751,7 +751,7 @@ O QUE PRECISA:
 📹 Telemedicina (tendência pós-pandemia)
 
 POSICIONAMENTO SUGERIDO:
-"Gestor Vetsmart: A primeira plataforma veterinária com IA que prevê problemas antes de acontecerem. Fidelize clientes, aumente receita e economize tempo."
+"Gestor VetPro: A primeira plataforma veterinária com IA que prevê problemas antes de acontecerem. Fidelize clientes, aumente receita e economize tempo."
 
 DIFERENCIAIS vs CONCORRENTES:
 🚀 IA Preditiva - Insights que nenhum concorrente tem
@@ -774,7 +774,7 @@ MÓDULO 1: DASHBOARD - EXPANSÃO
 Prompt para implementação:
 
 text
-Crie um widget de análise preditiva no Dashboard do Gestor Vetsmart que utilize a IA Vertex para:
+Crie um widget de análise preditiva no Dashboard do Gestor VetPro que utilize a IA Vertex para:
 
 1. Prever faturamento dos próximos 30 dias baseado em:
    - Histórico de consultas dos últimos 12 meses
@@ -806,7 +806,7 @@ Interface: Cards expansíveis, cores baseadas em criticidade (verde/amarelo/verm
 Prompt para implementação:
 
 text
-Implemente uma Central de Notificações Inteligentes no header do Gestor Vetsmart:
+Implemente uma Central de Notificações Inteligentes no header do Gestor VetPro:
 
 1. Tipos de notificações:
    - 🔔 Consultas próximas (30 min antes)
@@ -836,7 +836,7 @@ Interface: Dropdown estilo Gmail/LinkedIn
 Prompt para implementação:
 
 text
-Crie sistema de Dashboard customizável no Gestor Vetsmart:
+Crie sistema de Dashboard customizável no Gestor VetPro:
 
 1. Biblioteca de widgets disponíveis:
    - Gráfico de consultas (linha, barra, pizza)
@@ -871,7 +871,7 @@ MÓDULO 2: AGENDA - OTIMIZAÇÃO
 Prompt para implementação:
 
 text
-Desenvolva portal de agendamento online para tutores no Gestor Vetsmart:
+Desenvolva portal de agendamento online para tutores no Gestor VetPro:
 
 1. Interface pública (subdomínio clinica.gestvetsmart.com.br):
    - Seleção de serviço (consulta, vacina, banho, cirurgia, etc)
@@ -935,7 +935,7 @@ Interface: Badge com contador na agenda, modal com gerenciamento
 Prompt para implementação:
 
 text
-Desenvolva módulo de telemedicina no Gestor Vetsmart:
+Desenvolva módulo de telemedicina no Gestor VetPro:
 
 1. Funcionalidades de videochamada:
    - Iniciar chamada diretamente da agenda
@@ -1906,7 +1906,7 @@ Referência: HubSpot, RD Station, ActiveCampaign
 Prompt para implementação:
 
 text
-Integre gestão de redes sociais no Gestor Vetsmart:
+Integre gestão de redes sociais no Gestor VetPro:
 
 1. Central de publicações:
    - Criar posts com texto, imagens, vídeos
@@ -2299,7 +2299,7 @@ MÓDULO 11: INTEGRAÇÕES E ECOSSISTEMA
 Prompt para implementação:
 
 text
-Integre Gestor Vetsmart com todo ecossistema IT2A:
+Integre Gestor VetPro com todo ecossistema IT2A:
 
 1. Gestor Office (Financeiro):
    - Exportar movimentação financeira
@@ -2585,7 +2585,7 @@ Garanta continuidade do negócio:
 4. Monitoramento:
    - Health checks a cada minuto
    - Alertas via SMS/WhatsApp se site cair
-   - Dashboard de status (status.gestvetsmart.com.br)
+   - Dashboard de status (status.gestvetpro.com.br)
    - Logs centralizados
 
 5. Plano de contingência:
@@ -2759,7 +2759,7 @@ Multi-tenancy e white label
 DICOM viewer para imagens médicas
 
 🎯 DIFERENCIAIS COMPETITIVOS VS CONCORRÊNCIA
-Vantagens do Gestor Vetsmart:
+Vantagens do Gestor VetPro:
 ✅ IA nativa em todos os módulos (Vertex AI)
 ✅ Ecossistema integrado IT2A
 ✅ Análise de fidelidade automática
@@ -2873,4 +2873,4 @@ Iterar baseado em feedback real
 
 Escalar após validação
 
-Este roadmap completo posiciona o Gestor Vetsmart como a plataforma veterinária mais avançada e inteligente do Brasil, combinando gestão completa com IA nativa em todos os processos. O diferencial será a experiência integrada (tutor + veterinário + gestor) e a automação inteligente que economiza tempo e aumenta receita das clínicas.
+Este roadmap completo posiciona o Gestor VetPro como a plataforma veterinária mais avançada e inteligente do Brasil, combinando gestão completa com IA nativa em todos os processos. O diferencial será a experiência integrada (tutor + veterinário + gestor) e a automação inteligente que economiza tempo e aumenta receita das clínicas.

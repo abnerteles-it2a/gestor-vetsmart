@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = '/api'; // O proxy do Vite redirecionará para http://localhost:3001
+const API_URL = import.meta.env.VITE_API_URL || '/api'; // O proxy do Vite redirecionará para http://localhost:3001 em dev
 
 const api = axios.create({
   baseURL: API_URL,
@@ -11,7 +11,7 @@ const api = axios.create({
 
 // Interceptor para adicionar token JWT
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('vetsmart_token');
+  const token = localStorage.getItem('vetpro_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -24,8 +24,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       console.warn('Sessão expirada ou inválida. Deslogando usuário...');
-      localStorage.removeItem('vetsmart_token');
-      localStorage.removeItem('vetsmart_user');
+      localStorage.removeItem('vetpro_token');
+      localStorage.removeItem('vetpro_user');
       // Opcional: Redirecionar para login se estiver no browser
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login';
@@ -79,6 +79,10 @@ export const apiService = {
   getHospitalizations: () => api.get('/hospitalization'),
   createHospitalization: (data: any) => api.post('/hospitalization', data),
   updateHospitalization: (id: string, data: any) => api.put(`/hospitalization/${id}`, data),
+
+  // Medical Records
+  getMedicalRecords: (petId: string) => api.get(`/medical-records/${petId}`),
+  createMedicalRecord: (data: any) => api.post('/medical-records', data),
 
   // Plans
   getPlans: () => api.get('/plans'),

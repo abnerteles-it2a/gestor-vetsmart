@@ -155,7 +155,7 @@ const AIConsultation: React.FC = () => {
                             {clinicalResult.suggested_billing?.map((item: any, idx: number) => (
                                 <li key={idx} className="flex justify-between items-center text-sm p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
                                     <span className="text-slate-700 dark:text-slate-300">{item.item}</span>
-                                    {item.reason && <span className="text-[10px] text-slate-400 max-w-[100px] truncate" title={item.reason}>{item.reason}</span>}
+                                    {item.reason && <span className="text-[10px] text-slate-400 max-w-24 truncate" title={item.reason}>{item.reason}</span>}
                                     <i className="fas fa-check-circle text-emerald-500"></i>
                                 </li>
                             ))}

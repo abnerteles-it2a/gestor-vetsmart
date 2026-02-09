@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { NewAppointmentModal } from './NewItemModals';
-import { mockDataService } from '../services/mockDataService';
+import { apiService } from '../services/api';
+import { useNavigation } from '../context/NavigationContext';
 
-interface AgendaModuleProps {
-    onNavigate?: (tab: string) => void;
-}
-
-const AgendaModule: React.FC<AgendaModuleProps> = ({ onNavigate }) => {
+const AgendaModule: React.FC = () => {
+  const { navigateTo } = useNavigation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,20 +14,31 @@ const AgendaModule: React.FC<AgendaModuleProps> = ({ onNavigate }) => {
     const loadAppointments = async () => {
       setIsLoading(true);
       try {
-        // Use MockDataService for Demo Mode consistency
-        const data = await mockDataService.getAppointments();
-        const mapped = data.map((a: any) => ({
-          time: a.time,
-          pet: a.pet || 'Pet desconhecido',
-          species: a.species || '',
-          tutor: a.tutor || 'Contato não informado',
-          service: a.service,
-          status: a.status,
-          dateLabel: a.date ? ` (${a.date.split('-').reverse().slice(0, 2).join('/')})` : '', // Format DD/MM
-          room: a.room || '',
-          vet: a.vet || '',
-          type: a.type || 'consulta',
-        }));
+        // Use Real API Service
+        const response = await apiService.getAppointments();
+        const data = response.data;
+        
+        const mapped = data.map((a: any) => {
+          const dateObj = new Date(a.appointment_date);
+          const time = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          const dateLabel = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+          
+          return {
+            id: a.id,
+            time: time,
+            petId: a.pet_id,
+            pet: a.pet_name || 'Pet desconhecido',
+            species: a.species || '',
+            tutor: a.tutor_name || 'Contato não informado',
+            service: a.reason || a.type,
+            status: a.status,
+            dateLabel: ` (${dateLabel})`,
+            room: a.room || 'Sala 1',
+            vet: a.vet_name || 'Veterinário',
+            type: a.type || 'consulta',
+            rawDate: a.appointment_date // Keep for sorting/filtering if needed
+          };
+        });
         setAppointments(mapped);
       } catch (e) {
         console.error('Failed to load appointments', e);
@@ -119,43 +128,49 @@ const AgendaModule: React.FC<AgendaModuleProps> = ({ onNavigate }) => {
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {appointments.map((apt, idx) => (
-              <div key={idx} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+              <div key={idx} className="p-4 xl:p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                 <div className="flex items-start gap-4">
-                  <div className="w-16 flex flex-col items-center justify-center pt-1">
-                    <span className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-none">{apt.time}</span>
-                    <span className="text-[10px] text-slate-400 font-medium uppercase mt-1">{apt.room}</span>
+                  <div className="w-16 xl:w-20 flex flex-col items-center justify-center pt-1">
+                    <span className="text-lg xl:text-xl font-bold text-slate-800 dark:text-slate-100 leading-none">{apt.time}</span>
+                    <span className="text-[10px] xl:text-xs text-slate-400 font-medium uppercase mt-1">{apt.room}</span>
                   </div>
                   
                   <div className="flex-1">
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${getTypePillClasses(apt.type)}`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] xl:text-xs font-bold uppercase tracking-wider ${getTypePillClasses(apt.type)}`}>
                           {apt.type}
                         </span>
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100">{apt.pet}</h4>
-                        <span className="text-xs text-slate-400">• {apt.species}</span>
+                        <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base xl:text-lg">{apt.pet}</h4>
+                        <span className="text-xs xl:text-sm text-slate-400">• {apt.species}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getStatusPillClasses(apt.status)}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] xl:text-xs font-bold uppercase ${getStatusPillClasses(apt.status)}`}>
                           {apt.status.replace('_', ' ')}
                         </span>
                         {/* Start Consultation Button - Connects to Clinical Module */}
-                        {onNavigate && (
-                            <button 
-                                onClick={() => onNavigate('clinical')}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 p-2 rounded-lg"
-                                title="Iniciar Atendimento"
-                            >
-                                <i className="fas fa-stethoscope"></i>
-                            </button>
-                        )}
+                        <button 
+                            onClick={() => {
+                                // If we have a petId, navigate to patients record or clinical module
+                                if (apt.petId) {
+                                    navigateTo('patients', { petId: apt.petId, subTab: 'history' });
+                                } else {
+                                    navigateTo('clinical');
+                                }
+                            }}
+                            className="opacity-100 xl:opacity-0 xl:group-hover:opacity-100 transition-opacity bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 p-2 rounded-lg flex items-center gap-2"
+                            title="Ver Prontuário"
+                        >
+                            <i className="fas fa-file-medical"></i>
+                            <span className="xl:hidden text-xs font-bold">Prontuário</span>
+                        </button>
                         <button className="text-slate-300 hover:text-slate-500 dark:hover:text-slate-400 p-1">
                           <i className="fas fa-ellipsis-v"></i>
                         </button>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    <div className="flex items-center gap-4 text-sm xl:text-base text-slate-500 dark:text-slate-400 mt-1">
                       <span className="flex items-center gap-1">
                         <i className="fas fa-user-circle text-slate-400"></i> {apt.tutor}
                       </span>

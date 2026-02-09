@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-// List of variables to capture from the build environment for gestor-vetsmart
+// List of variables to capture from the build environment for gestor-vetpro
 const vars = [
     'DATABASE_URL',
     'JWT_SECRET',

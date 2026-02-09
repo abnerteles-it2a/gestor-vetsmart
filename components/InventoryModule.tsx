@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { NewInventoryModal } from './NewItemModals';
-import { mockDataService } from '../services/mockDataService';
+import { apiService } from '../services/api';
 
 const InventoryModule: React.FC = () => {
   const [showNewItemModal, setShowNewItemModal] = useState(false);
@@ -20,29 +20,47 @@ const InventoryModule: React.FC = () => {
       setIsLoading(true);
       try {
         // Parallel load of Inventory and AI Forecast
-        const [data, aiData] = await Promise.all([
-            mockDataService.getInventory(),
-            mockDataService.getInventoryForecast()
+        const [productsRes, aiRes] = await Promise.all([
+            apiService.getProducts(),
+            apiService.getInventoryForecast()
         ]);
 
-        const mapped = data.map((i: any) => ({
-            name: i.name,
-            category: i.category,
-            stock: i.stock,
-            minStock: i.minStock,
-            price: i.price,
-            status: i.status || 'ok'
-        }));
+        const data = productsRes.data;
+        const aiData = aiRes.data;
+
+        const mapped = data.map((i: any) => {
+            const stock = i.stock_quantity || 0;
+            const minStock = i.min_stock_level || 0;
+            let status = 'ok';
+            if (stock <= 0) status = 'critical';
+            else if (stock <= minStock) status = 'warning';
+            
+            return {
+                name: i.name,
+                category: i.category || 'Geral',
+                stock: stock,
+                minStock: minStock,
+                price: parseFloat(i.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                status: status
+            };
+        });
         setItems(mapped);
 
         // Update AI Prediction based on real API data
-        if (aiData && aiData.predictions && aiData.predictions.length > 0) {
-             const count = aiData.predictions.length;
-             const firstItem = aiData.predictions[0];
+        // Backend returns: { analysis_summary, critical_restock: [], waste_alert }
+        if (aiData && aiData.critical_restock && aiData.critical_restock.length > 0) {
+             const count = aiData.critical_restock.length;
+             const firstItem = aiData.critical_restock[0];
              setAiPrediction({
-                 message: `${count} produtos precisam de reposição urgente (ex: ${firstItem.name}). Motivo: ${firstItem.reason || 'Baixo estoque e alta saída.'}`,
+                 message: `${count} produtos precisam de reposição urgente (ex: ${firstItem.item}). Motivo: ${firstItem.reason || 'Baixo estoque e alta saída.'}`,
                  action: 'Repor Agora',
-                 savings: 'R$ 840,00' // Estimated savings
+                 savings: 'R$ 840,00' // Estimated savings placeholder
+             });
+        } else if (aiData && aiData.analysis_summary) {
+             setAiPrediction({
+                 message: aiData.analysis_summary,
+                 action: 'Manter',
+                 savings: 'R$ 1.250,00'
              });
         } else {
              setAiPrediction({
@@ -75,7 +93,7 @@ const InventoryModule: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Estoque de Produtos</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300">Ecossistema Gestor Vetsmart - Inteligência de Suprimentos.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">Ecossistema Gestor VetPro - Inteligência de Suprimentos.</p>
         </div>
         <div className="flex gap-2">
           <button className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-200">
@@ -147,7 +165,7 @@ const InventoryModule: React.FC = () => {
                 <td className="px-6 py-4 text-sm font-medium text-slate-800 dark:text-slate-100">{item.price}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden max-w-[80px]">
+                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden max-w-20">
                           <div className={`h-full rounded-full ${item.status === 'critical' ? 'bg-red-500' : item.status === 'warning' ? 'bg-orange-500' : 'bg-green-500'}`} style={{width: `${(item.stock / 30) * 100}%`}}></div>
                       </div>
                       <span className={`text-[10px] font-bold uppercase ${

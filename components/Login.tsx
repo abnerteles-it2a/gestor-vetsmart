@@ -42,7 +42,7 @@ const Login: React.FC = () => {
       
       if (success) {
         setIsSignUpOpen(false);
-        setMsg('Conta criada! Bem-vindo ao Gestor Vetsmart.');
+        setMsg('Conta criada! Bem-vindo ao Gestor VetPro.');
       } else {
         setMsg('Erro ao criar conta. Tente outro email.');
       }
@@ -69,7 +69,7 @@ const Login: React.FC = () => {
               />
             )}
             <div>
-              <div className="text-3xl font-bold text-white">Gestor Vetsmart</div>
+              <div className="text-3xl font-bold text-white">Gestor VetPro</div>
               <div className="text-sm text-slate-300">Gestão Veterinária Inteligente</div>
             </div>
           </div>
@@ -92,7 +92,7 @@ const Login: React.FC = () => {
                   onError={() => { setLogoErr(logoErr + 1); setShowLogo(false); }} 
                 />
               )}
-              <span className="text-lg font-bold text-slate-900">Gestor Vetsmart</span>
+              <span className="text-lg font-bold text-slate-900">Gestor VetPro</span>
             </div>
             
             {!isSignUpOpen ? (
@@ -112,7 +112,7 @@ const Login: React.FC = () => {
                       disabled={busy} 
                       type="email"
                       required
-                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50" 
+                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50 text-slate-900" 
                     />
                   </div>
                   <div>
@@ -124,7 +124,7 @@ const Login: React.FC = () => {
                       placeholder="••••••••" 
                       disabled={busy} 
                       required
-                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50" 
+                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50 text-slate-900" 
                     />
                   </div>
                   
@@ -167,7 +167,7 @@ const Login: React.FC = () => {
                       onChange={(e)=>setSuName(e.target.value)} 
                       placeholder="Seu nome" 
                       disabled={busy} 
-                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50" 
+                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50 text-slate-900" 
                     />
                   </div>
                   <div>
@@ -177,7 +177,7 @@ const Login: React.FC = () => {
                       onChange={(e)=>setSuEmail(e.target.value)} 
                       placeholder="seu@email.com" 
                       disabled={busy} 
-                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50" 
+                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50 text-slate-900" 
                     />
                   </div>
                   <div>
@@ -188,7 +188,7 @@ const Login: React.FC = () => {
                       onChange={(e)=>setSuPassword(e.target.value)} 
                       placeholder="Mínimo 6 caracteres" 
                       disabled={busy} 
-                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50" 
+                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50 text-slate-900" 
                     />
                   </div>
                 </div>
@@ -217,7 +217,7 @@ const Login: React.FC = () => {
           </div>
           
           <div className="absolute bottom-6 text-center text-xs text-slate-500/50 w-full md:w-auto md:text-white/20">
-            © 2026 Gestor Vetsmart • Todos os direitos reservados
+            © 2026 Gestor VetPro • Todos os direitos reservados
           </div>
         </div>
       </div>

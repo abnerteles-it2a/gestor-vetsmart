@@ -41,7 +41,7 @@ const ReportsModule: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Relatórios & Performance</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-300">Análise detalhada de faturamento e serviços do ecossistema Gestor Vetsmart.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-300">Análise detalhada de faturamento e serviços do ecossistema Gestor VetPro.</p>
         </div>
         <button className="bg-slate-900 text-white px-6 py-2 rounded-xl font-semibold shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2">
           <i className="fas fa-file-pdf"></i> Exportar BI
@@ -50,7 +50,7 @@ const ReportsModule: React.FC = () => {
 
       {/* Enhanced BI Filters */}
       <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-wrap gap-6 items-center">
-        <div className="flex flex-col gap-1.5 min-w-[140px]">
+        <div className="flex flex-col gap-1.5 min-w-36">
           <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider ml-1">Período</label>
           <select 
             value={selectedPeriod}
@@ -64,7 +64,7 @@ const ReportsModule: React.FC = () => {
           </select>
         </div>
 
-        <div className="flex flex-col gap-1.5 min-w-[100px]">
+        <div className="flex flex-col gap-1.5 min-w-24">
           <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider ml-1">Mês</label>
           <select 
             value={selectedMonth}
@@ -75,7 +75,7 @@ const ReportsModule: React.FC = () => {
           </select>
         </div>
 
-        <div className="flex flex-col gap-1.5 min-w-[160px]">
+        <div className="flex flex-col gap-1.5 min-w-40">
           <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider ml-1">Serviço</label>
           <select 
             value={selectedService}
@@ -90,7 +90,7 @@ const ReportsModule: React.FC = () => {
           </select>
         </div>
 
-        <div className="flex flex-col gap-1.5 min-w-[180px]">
+        <div className="flex flex-col gap-1.5 min-w-44">
           <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider ml-1">Veterinário</label>
           <select 
             value={selectedVet}

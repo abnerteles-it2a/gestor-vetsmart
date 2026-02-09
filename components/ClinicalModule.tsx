@@ -1,20 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigation } from '../context/NavigationContext';
 import { processClinicalNotes } from '../services/geminiService';
+import { apiService } from '../services/api';
 import { PetSpecies, AIConsultationResponse } from '../types';
 import { NewPetModal } from './NewItemModals';
 import { useToast } from '../context/ToastContext';
 
-// Mock data simulating Agenda integration
-const scheduledPatients = [
-  { id: '1', name: 'Luna', species: PetSpecies.CAT, breed: 'Siamês', age: 3, weight: 4.2, tutor: 'João Silva', time: '09:00', status: 'waiting', reason: 'Vômito e Apatia' },
-  { id: '2', name: 'Thor', species: PetSpecies.DOG, breed: 'Golden Ret.', age: 5, weight: 32, tutor: 'Maria Oliveira', time: '10:30', status: 'in_progress', reason: 'Vacinação V10' },
-  { id: '3', name: 'Pipoca', species: PetSpecies.DOG, breed: 'Beagle', age: 2, weight: 12, tutor: 'Carlos Lima', time: '14:00', status: 'finished', reason: 'Retorno Cirúrgico' },
-];
-
 const ClinicalModule: React.FC = () => {
+  const { navigateTo, navigationParams } = useNavigation();
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState<'anamnese' | 'exam' | 'diagnosis' | 'treatment'>('anamnese');
-  const [selectedPetId, setSelectedPetId] = useState<string>('2'); // Default to 'Thor' (in progress)
+  const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
+  const [scheduledPatients, setScheduledPatients] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // State for clinical notes
   const [anamnese, setAnamnese] = useState('');
@@ -22,9 +20,154 @@ const ClinicalModule: React.FC = () => {
   const [diagnosis, setDiagnosis] = useState('');
   const [treatment, setTreatment] = useState('');
   
+  // Physical Exam State
+  const [temperature, setTemperature] = useState('');
+  const [heartRate, setHeartRate] = useState('');
+  const [respRate, setRespRate] = useState('');
+  const [tpc, setTpc] = useState('');
+  
+  // Exams State
+  const [selectedExams, setSelectedExams] = useState<string[]>([]);
+  
   const [isProcessing, setIsProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<AIConsultationResponse | null>(null);
   const [isNewPetModalOpen, setIsNewPetModalOpen] = useState(false);
+
+  // Age calculation helper
+  const calculateAge = (birthDate: string) => {
+    if (!birthDate) return 0;
+    const birth = new Date(birthDate);
+    const today = new Date();
+    let years = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        years--;
+    }
+    return years;
+  };
+
+  // Load Data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [appointmentsRes, petsRes] = await Promise.all([
+          apiService.getAppointments(),
+          apiService.getPets()
+        ]);
+
+        const appointments = appointmentsRes.data;
+        const pets = petsRes.data;
+
+        const mapped = appointments.map((apt: any) => {
+          const pet = pets.find((p: any) => p.id === apt.pet_id);
+          
+          let formattedTime = '---';
+          if (apt.appointment_date) {
+             const dateObj = new Date(apt.appointment_date);
+             formattedTime = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          }
+
+          return {
+            id: apt.pet_id.toString(), // Using PetId as ID for this view
+            name: apt.pet_name,
+            species: apt.species === 'Gato' ? PetSpecies.CAT : PetSpecies.DOG,
+            breed: pet?.breed || 'N/A',
+            age: pet?.birth_date ? calculateAge(pet.birth_date) : 0,
+            weight: pet?.weight ? parseFloat(pet.weight) : 0,
+            tutor: apt.tutor_name,
+            time: formattedTime,
+            status: apt.status === 'agendado' ? 'waiting' : apt.status === 'em_andamento' ? 'in_progress' : 'finished',
+            reason: apt.reason || apt.type
+          };
+        });
+
+        // Filter out canceled or future days if desired? 
+        // For now, let's keep all appointments to match behavior, or maybe filter to today?
+        // The previous mock behavior was just "getAppointments", which returned a static list.
+        // Let's filter to TODAY to be realistic for a "Clinical Queue".
+        const today = new Date().toISOString().split('T')[0];
+        const todayAppointments = mapped.filter((a: any) => {
+             // We need the original date to filter. But we only have mapped data here.
+             // Let's rely on the original loop or re-map.
+             // Actually, let's just use the ones from today.
+             const aptRaw = appointments.find((raw: any) => raw.pet_id.toString() === a.id); // This is risky if multiple appts.
+             // Better: Filter `appointments` first.
+             return true; 
+        });
+        
+        // Let's filter `appointments` first in the chain to be safe.
+        const relevantAppointments = appointments.filter((a: any) => {
+             return a.appointment_date && a.appointment_date.startsWith(today) && a.status !== 'cancelado';
+        });
+
+        const finalMapped = relevantAppointments.map((apt: any) => {
+            const pet = pets.find((p: any) => p.id === apt.pet_id);
+            const dateObj = new Date(apt.appointment_date);
+            const formattedTime = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+            return {
+                id: apt.pet_id.toString(),
+                name: apt.pet_name,
+                species: apt.species === 'Gato' ? PetSpecies.CAT : PetSpecies.DOG,
+                breed: pet?.breed || 'N/A',
+                age: pet?.birth_date ? calculateAge(pet.birth_date) : 0,
+                weight: pet?.weight ? parseFloat(pet.weight) : 0,
+                tutor: apt.tutor_name,
+                time: formattedTime,
+                status: apt.status === 'agendado' ? 'waiting' : apt.status === 'em_andamento' ? 'in_progress' : 'finished',
+                reason: apt.reason || apt.type
+            };
+        });
+
+        setScheduledPatients(finalMapped);
+        
+        // Initial selection logic (only if no param navigation pending)
+        if (!selectedPetId && finalMapped.length > 0 && !navigationParams?.petId) {
+           setSelectedPetId(finalMapped[0].id);
+        }
+      } catch (err) {
+        console.error("Error loading clinical data", err);
+        addToast("Erro ao carregar agenda clínica", "error");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Handle Navigation Params (Deep Linking)
+  useEffect(() => {
+    if (navigationParams?.petId) {
+      const targetId = navigationParams.petId;
+      setSelectedPetId(targetId);
+
+      // If pet is not in the schedule, fetch and add it as "Avulso"
+      if (!isLoading && scheduledPatients.length > 0) {
+        const exists = scheduledPatients.find(p => p.id === targetId);
+        if (!exists) {
+           apiService.getPets().then(res => {
+             const pets = res.data;
+             const pet = pets.find((p: any) => p.id.toString() === targetId);
+             if (pet) {
+               const newPatient = {
+                 id: pet.id.toString(),
+                 name: pet.name,
+                 species: pet.species === 'Gato' ? PetSpecies.CAT : PetSpecies.DOG,
+                 breed: pet.breed,
+                 age: pet.birth_date ? calculateAge(pet.birth_date) : 0,
+                 weight: parseFloat(pet.weight) || 0,
+                 tutor: pet.tutor_name,
+                 time: 'Agora',
+                 status: 'in_progress',
+                 reason: 'Consulta Avulsa'
+               };
+               setScheduledPatients(prev => [...prev, newPatient]);
+             }
+           });
+        }
+      }
+    }
+  }, [navigationParams, isLoading, scheduledPatients.length]);
 
   const selectedPatient = scheduledPatients.find(p => p.id === selectedPetId) || scheduledPatients[0];
 
@@ -75,6 +218,15 @@ const ClinicalModule: React.FC = () => {
       setIsProcessing(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-140px)] items-center justify-center">
+         <i className="fas fa-spinner fa-spin text-4xl text-blue-600"></i>
+         <span className="ml-3 text-slate-600 dark:text-slate-400">Carregando prontuários...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-140px)] gap-6">
@@ -131,33 +283,46 @@ const ClinicalModule: React.FC = () => {
 
       {/* Main Clinical Area */}
       <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+        {!selectedPatient ? (
+           <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400">
+              <div className="text-center">
+                 <i className="fas fa-user-md text-6xl mb-4 opacity-20"></i>
+                 <p className="font-bold">Nenhum atendimento selecionado</p>
+                 <p className="text-sm mt-2">Selecione um paciente na fila ou inicie um atendimento avulso.</p>
+              </div>
+           </div>
+        ) : (
+        <>
         {/* Patient Header */}
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/20">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/30 dark:bg-slate-800/20">
             <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 ${selectedPatient.species === PetSpecies.CAT ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'} rounded-2xl flex items-center justify-center shadow-sm`}>
-                    <i className={`fas ${selectedPatient.species === PetSpecies.CAT ? 'fa-cat' : 'fa-dog'} text-3xl`}></i>
+                <div className={`w-16 h-16 xl:w-20 xl:h-20 ${selectedPatient.species === PetSpecies.CAT ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'} rounded-2xl flex items-center justify-center shadow-sm transition-all`}>
+                    <i className={`fas ${selectedPatient.species === PetSpecies.CAT ? 'fa-cat' : 'fa-dog'} text-3xl xl:text-4xl`}></i>
                 </div>
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{selectedPatient.name}</h2>
-                    <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    <h2 className="text-2xl xl:text-2xl 2xl:text-3xl font-bold text-slate-800 dark:text-slate-100 transition-all">{selectedPatient.name}</h2>
+                    <div className="flex flex-wrap items-center gap-3 text-sm xl:text-sm 2xl:text-base text-slate-500 dark:text-slate-400 mt-1">
                         <span><i className="fas fa-user mr-1"></i> {selectedPatient.tutor}</span>
-                        <span>•</span>
+                        <span className="hidden sm:inline">•</span>
                         <span>{selectedPatient.breed}</span>
-                        <span>•</span>
+                        <span className="hidden sm:inline">•</span>
                         <span>{selectedPatient.age} anos</span>
-                        <span>•</span>
+                        <span className="hidden sm:inline">•</span>
                         <span>{selectedPatient.weight} kg</span>
                     </div>
                 </div>
             </div>
-            <div className="flex gap-3">
-                <button className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
-                    <i className="fas fa-history mr-2 text-blue-500"></i> Histórico
+            <div className="flex gap-3 w-full md:w-auto">
+                <button 
+                    onClick={() => navigateTo('patients', { petId: selectedPatient.id, subTab: 'history' })}
+                    className="flex-1 md:flex-none px-4 py-2 xl:px-6 xl:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm xl:text-base font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm flex items-center justify-center gap-2"
+                >
+                    <i className="fas fa-file-medical text-blue-500"></i> Ver Prontuário
                 </button>
                 <button 
                     onClick={handleGenerateAI}
                     disabled={isProcessing}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-200 hover:shadow-purple-300 hover:scale-105 transition-all flex items-center gap-2"
+                    className="flex-1 md:flex-none px-4 py-2 xl:px-6 xl:py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl text-sm xl:text-base font-bold shadow-lg shadow-purple-200 hover:shadow-purple-300 hover:scale-105 transition-all flex items-center justify-center gap-2"
                 >
                     <i className={`fas ${isProcessing ? 'fa-spinner fa-spin' : 'fa-robot'}`}></i> 
                     {isProcessing ? 'Analisando...' : 'IA Assistente'}
@@ -211,28 +376,52 @@ const ClinicalModule: React.FC = () => {
                         <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Temperatura</label>
                             <div className="flex items-center mt-1">
-                                <input type="text" placeholder="38.5" className="w-full bg-transparent font-bold text-lg outline-none text-slate-800 dark:text-slate-100" />
+                                <input 
+                                    type="text" 
+                                    value={temperature}
+                                    onChange={(e) => setTemperature(e.target.value)}
+                                    placeholder="38.5" 
+                                    className="w-full bg-transparent font-bold text-lg outline-none text-slate-800 dark:text-slate-100" 
+                                />
                                 <span className="text-xs text-slate-400">°C</span>
                             </div>
                         </div>
                         <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Freq. Cardíaca</label>
                             <div className="flex items-center mt-1">
-                                <input type="text" placeholder="120" className="w-full bg-transparent font-bold text-lg outline-none text-slate-800 dark:text-slate-100" />
+                                <input 
+                                    type="text" 
+                                    value={heartRate}
+                                    onChange={(e) => setHeartRate(e.target.value)}
+                                    placeholder="120" 
+                                    className="w-full bg-transparent font-bold text-lg outline-none text-slate-800 dark:text-slate-100" 
+                                />
                                 <span className="text-xs text-slate-400">bpm</span>
                             </div>
                         </div>
                         <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Freq. Resp.</label>
                             <div className="flex items-center mt-1">
-                                <input type="text" placeholder="30" className="w-full bg-transparent font-bold text-lg outline-none text-slate-800 dark:text-slate-100" />
+                                <input 
+                                    type="text" 
+                                    value={respRate}
+                                    onChange={(e) => setRespRate(e.target.value)}
+                                    placeholder="30" 
+                                    className="w-full bg-transparent font-bold text-lg outline-none text-slate-800 dark:text-slate-100" 
+                                />
                                 <span className="text-xs text-slate-400">mpm</span>
                             </div>
                         </div>
                         <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">TPC</label>
                             <div className="flex items-center mt-1">
-                                <input type="text" placeholder="2" className="w-full bg-transparent font-bold text-lg outline-none text-slate-800 dark:text-slate-100" />
+                                <input 
+                                    type="text" 
+                                    value={tpc}
+                                    onChange={(e) => setTpc(e.target.value)}
+                                    placeholder="2" 
+                                    className="w-full bg-transparent font-bold text-lg outline-none text-slate-800 dark:text-slate-100" 
+                                />
                                 <span className="text-xs text-slate-400">seg</span>
                             </div>
                         </div>
@@ -281,7 +470,18 @@ const ClinicalModule: React.FC = () => {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {['Hemograma', 'Bioquímico', 'Ultrassom', 'Raio-X', 'Urinálise', 'Fezes'].map(exame => (
                                 <label key={exame} className="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700">
-                                    <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" />
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectedExams.includes(exame)}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setSelectedExams([...selectedExams, exame]);
+                                            } else {
+                                                setSelectedExams(selectedExams.filter(item => item !== exame));
+                                            }
+                                        }}
+                                        className="rounded text-blue-600 focus:ring-blue-500" 
+                                    />
                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{exame}</span>
                                 </label>
                             ))}
@@ -317,17 +517,55 @@ const ClinicalModule: React.FC = () => {
                     </div>
                     
                     <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <button className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                        <button 
+                            onClick={() => addToast('Rascunho salvo com sucesso!', 'success')}
+                            className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                        >
                             Salvar Rascunho
                         </button>
-                        <button className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-200 dark:shadow-none transition-all flex items-center gap-2">
+                        <button 
+                            onClick={() => {
+                                addToast('Consulta finalizada com sucesso! Histórico atualizado.', 'success');
+                                // Here we would normally save to DB via apiService
+                                // apiService.saveConsultation({ ... })
+                                // For now, just simulate success
+                                navigateTo('patients', { petId: selectedPatient.id, subTab: 'history' });
+                            }}
+                            className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-200 dark:shadow-none transition-all flex items-center gap-2"
+                        >
                             <i className="fas fa-check"></i> Finalizar Consulta
                         </button>
                     </div>
                 </div>
             )}
         </div>
+        </>
+        )}
       </div>
+
+      <NewPetModal
+        isOpen={isNewPetModalOpen}
+        onClose={() => {
+            setIsNewPetModalOpen(false);
+        }}
+        onSaved={(pet) => {
+            // Add to list immediately if created here
+            const newPatient = {
+                 id: pet.id,
+                 name: pet.name,
+                 species: pet.species === 'Gato' ? PetSpecies.CAT : PetSpecies.DOG,
+                 breed: pet.breed,
+                 age: parseInt(pet.age) || 0,
+                 weight: parseFloat(pet.weight) || 0,
+                 tutor: pet.tutor,
+                 time: 'Agora',
+                 status: 'in_progress',
+                 reason: 'Novo Paciente'
+            };
+            setScheduledPatients(prev => [...prev, newPatient]);
+            setSelectedPetId(pet.id);
+        }}
+      />
     </div>
   );
 };

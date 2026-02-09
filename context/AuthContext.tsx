@@ -51,8 +51,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     setUser(userData);
-    localStorage.setItem('vetsmart_user', JSON.stringify(userData));
-    localStorage.setItem('vetsmart_token', token);
+    localStorage.setItem('vetpro_user', JSON.stringify(userData));
+    localStorage.setItem('vetpro_token', token);
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -81,8 +81,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('vetsmart_user');
-    localStorage.removeItem('vetsmart_token');
+    localStorage.removeItem('vetpro_user');
+    localStorage.removeItem('vetpro_token');
   };
 
   return (

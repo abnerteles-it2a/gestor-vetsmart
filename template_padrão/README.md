@@ -1,6 +1,6 @@
 # Template Padrão – Ecossistema Gestor
 
-Este diretório contém o **modelo oficial de UI/UX** para todos os apps do ecossistema Gestor (Gestor Vetsmart, Gestor de Obras, Gestor Financeiro, etc).
+Este diretório contém o **modelo oficial de UI/UX** para todos os apps do ecossistema Gestor (Gestor VetPro, Gestor de Obras, Gestor Financeiro, etc).
 
 A ideia é: sempre que você criar um novo app Gestor, use estes arquivos como base para garantir que **toda a identidade visual** (layout, cores, tipografia, ícones, botões, modais, tabelas, toasts, header, footer e sidebar) fique padronizada.
 
@@ -33,7 +33,7 @@ A ideia é: sempre que você criar um novo app Gestor, use estes arquivos como b
   - Segunda linha com:
     - Card grande de “pipeline principal do app”.
     - Card de “atividades recentes”.
-  - Mesma linguagem visual dos dashboards do Gestor Vetsmart e Gestor Academias.
+  - Mesma linguagem visual dos dashboards do Gestor VetPro e Gestor Academias.
 
 - [components/RecordsModuleTemplate.tsx](./components/RecordsModuleTemplate.tsx)  
   Modelo oficial de módulo de cadastros:
@@ -214,4 +214,4 @@ Sempre que criar um novo app, garanta que:
    - O padrão de ícones e botões.
    - O contexto de toasts para qualquer feedback visual.
 
-Seguindo estes arquivos e orientações, você garante que **toda a parte visual** de novos apps do ecossistema Gestor esteja completamente alinhada ao padrão já usado no Gestor Vetsmart e nos demais projetos.
+Seguindo estes arquivos e orientações, você garante que **toda a parte visual** de novos apps do ecossistema Gestor esteja completamente alinhada ao padrão já usado no Gestor VetPro e nos demais projetos.

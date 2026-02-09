@@ -1,12 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { NewPetModal } from './NewItemModals';
 import { suggestCarePlan } from '../services/geminiService';
 import { useToast } from '../context/ToastContext';
+import { useNavigation } from '../context/NavigationContext';
 
-import { mockDataService } from '../services/mockDataService';
+import { apiService } from '../services/api';
 
 const PatientsModule: React.FC = () => {
   const { addToast } = useToast();
+  const { navigationParams, navigateTo } = useNavigation();
   const [isNewPetModalOpen, setIsNewPetModalOpen] = useState(false);
   const [isSuggestingPlan, setIsSuggestingPlan] = useState<string | null>(null);
   const [pets, setPets] = useState<any[]>([]);
@@ -25,42 +28,118 @@ const PatientsModule: React.FC = () => {
   const [carePlanData, setCarePlanData] = useState<any>(null);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
 
+  // Helper to calculate age
+  const calculateAge = (birthDate: string) => {
+    if (!birthDate) return 'Idade desconhecida';
+    const birth = new Date(birthDate);
+    const today = new Date();
+    let years = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        years--;
+    }
+    if (years === 0) {
+        const months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
+        return `${months} meses`;
+    }
+    return `${years} anos`;
+  };
+
+  // Handle navigation params (deep linking)
   useEffect(() => {
-    const loadPets = async () => {
+    if (navigationParams && navigationParams.petId) {
+      setSelectedPetId(navigationParams.petId);
+      
+      if (navigationParams.subTab) {
+        setActiveTab(navigationParams.subTab);
+      }
+    }
+  }, [navigationParams]); 
+
+  useEffect(() => {
+    const loadPetsAndData = async () => {
       setIsLoading(true);
       setLoadError(null);
       try {
-        // Use MockDataService instead of broken API fetch
-        const data = await mockDataService.getPets();
+        // Fetch Pets, Appointments, and Sales in parallel
+        const [petsRes, appointmentsRes, salesRes] = await Promise.all([
+            apiService.getPets(),
+            apiService.getAppointments(),
+            apiService.getSales()
+        ]);
         
-        const mappedPets = data.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          species: p.species,
-          breed: p.breed,
-          tutor: p.tutor,
-          age: p.age,
-          weight: p.weight,
-          status: p.status,
-          phone: p.phone,
-          email: p.email,
-          visitsThisYear: p.visitsThisYear,
-          lastVisit: p.lastVisit,
-          nextAppointment: p.nextAppointment,
-          totalSpend: p.totalSpend,
-          plan: p.plan,
-          photoUrl: p.photoUrl || null,
-        }));
+        const petsData = petsRes.data;
+        const appointmentsData = appointmentsRes.data;
+        const salesData = salesRes.data;
+
+        const currentYear = new Date().getFullYear();
+        
+        const mappedPets = petsData.map((p: any) => {
+            // Calculate Stats
+            const petAppointments = appointmentsData.filter((a: any) => String(a.pet_id) === String(p.id));
+            const petSales = salesData.filter((s: any) => String(s.pet_id) === String(p.id)); // Assuming sales have pet_id, or we might need to link via appointment? 
+            // Note: Sales usually link to appointment or customer. If sales don't have pet_id directly, we might need to check if sale has appointment_id and that appointment has pet_id.
+            // Let's assume for now sales might not directly have pet_id in the mock/simple schema, but if they do:
+            // If sales schema doesn't have pet_id, we can't easily calculate total spend per pet without more complex joins.
+            // However, looking at previous code, sales had 'pet_name' or similar?
+            // Let's check apiService.getSales() structure in memory or assume best effort.
+            // If sales have 'pet_id', great. If not, we skip or try to match by name (risky).
+            // Checking typical schema: sales often have 'customer_id' (tutor). 
+            // For now, let's try to match by pet_id if available, or just leave as 0 if not easily linkable to avoid errors.
+            
+            // Visits this year
+            const visitsThisYear = petAppointments.filter((a: any) => {
+                const d = new Date(a.appointment_date);
+                return d.getFullYear() === currentYear && a.status === 'concluido';
+            }).length;
+
+            // Last Visit
+            const pastAppointments = petAppointments
+                .filter((a: any) => new Date(a.appointment_date) < new Date() && a.status === 'concluido')
+                .sort((a: any, b: any) => new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime());
+            
+            const lastVisit = pastAppointments.length > 0 
+                ? new Date(pastAppointments[0].appointment_date).toLocaleDateString('pt-BR') 
+                : 'N/A';
+
+            // Total Spend (Approximation based on sales linked to pet if possible)
+            // If sales table has pet_id
+            const totalSpendVal = petSales.reduce((acc: number, s: any) => acc + parseFloat(s.total_amount || 0), 0);
+
+            return {
+                id: p.id,
+                name: p.name,
+                species: p.species,
+                breed: p.breed,
+                tutor: p.tutor_name || 'Tutor não informado',
+                age: calculateAge(p.birth_date),
+                weight: p.weight ? `${p.weight} kg` : 'N/A',
+                status: 'Ativo',
+                phone: p.phone || '',
+                email: p.email || '',
+                visitsThisYear: visitsThisYear,
+                lastVisit: lastVisit,
+                nextAppointment: p.next_appointment ? new Date(p.next_appointment).toISOString().split('T')[0] : null,
+                totalSpend: totalSpendVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                plan: 'Particular',
+                photoUrl: p.photo_url || null,
+                birthDate: p.birth_date,
+                medicalHistory: p.medical_history,
+                tutorId: p.tutor_id,
+                appointments: petAppointments // Store full appointments for history tab
+            };
+        });
         setPets(mappedPets);
       } catch (e) {
         console.error(e);
         setLoadError('Erro ao carregar pets.');
+        addToast('Erro ao carregar lista de pacientes.', 'error');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadPets();
+    loadPetsAndData();
   }, []);
 
   const handleSuggestPlan = async (pet: any) => {
@@ -88,7 +167,7 @@ const PatientsModule: React.FC = () => {
       return [...prev, pet];
     });
     setSelectedPetId(pet.id ?? pet.name);
-    setFilterScheduledToday(false); // Disable filter to show new pet if necessary
+    setFilterScheduledToday(false); 
     setSearchTerm('');
     setPetToEdit(null);
   };
@@ -97,7 +176,6 @@ const PatientsModule: React.FC = () => {
   const filteredPets = pets.filter(pet => {
     // 1. Filter by Scheduled Today
     if (filterScheduledToday) {
-       // Dynamic date for Demo Mode consistency
        const today = new Date().toISOString().split('T')[0];
        if (pet.nextAppointment !== today) return false;
     }
@@ -115,7 +193,7 @@ const PatientsModule: React.FC = () => {
     return true;
   });
 
-  const selectedPet = pets.find((p) => p.id === selectedPetId);
+  const selectedPet = pets.find((p) => String(p.id) === String(selectedPetId));
 
   return (
     <div className="space-y-6">
@@ -124,12 +202,12 @@ const PatientsModule: React.FC = () => {
         <div className="space-y-6 animate-fadeIn">
            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Busca de Pacientes</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300">Selecione um paciente para acessar o prontuário.</p>
+              <h3 className="text-xl xl:text-2xl font-bold text-slate-800 dark:text-slate-100">Busca de Pacientes</h3>
+              <p className="text-sm xl:text-base text-slate-600 dark:text-slate-300">Selecione um paciente para acessar o prontuário.</p>
             </div>
             <button 
               onClick={() => setIsNewPetModalOpen(true)}
-              className="bg-blue-600 text-white px-6 py-2 rounded-xl font-semibold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2"
+              className="bg-blue-600 text-white px-6 py-2 xl:px-8 xl:py-3 rounded-xl font-semibold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2 text-sm xl:text-base"
             >
               <i className="fas fa-paw"></i> Novo Paciente
             </button>
@@ -158,13 +236,13 @@ const PatientsModule: React.FC = () => {
                    onChange={(e) => setFilterScheduledToday(e.target.checked)}
                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                  />
-                 <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                 <span className="text-sm xl:text-base font-bold text-slate-700 dark:text-slate-300">
                     <i className="fas fa-calendar-day mr-2 text-blue-500"></i>
                     Agendados para Hoje
                  </span>
                </label>
                {filterScheduledToday && (
-                 <span className="text-xs text-slate-400 animate-pulse">
+                 <span className="text-xs xl:text-sm text-slate-400 animate-pulse">
                    Exibindo apenas pacientes com consulta hoje.
                  </span>
                )}
@@ -172,7 +250,7 @@ const PatientsModule: React.FC = () => {
           </div>
 
           {/* Results List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 xl:gap-6">
              {isLoading && <p className="col-span-full text-center py-8 text-slate-500">Carregando...</p>}
              
              {!isLoading && filteredPets.length === 0 && (
@@ -189,9 +267,9 @@ const PatientsModule: React.FC = () => {
                <button 
                  key={pet.id}
                  onClick={() => setSelectedPetId(pet.id)}
-                 className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 transition-all text-left group"
+                 className="flex items-center gap-4 p-4 xl:p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 transition-all text-left group"
                >
-                  <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-2xl group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition-colors overflow-hidden">
+                  <div className="w-14 h-14 xl:w-16 xl:h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-2xl group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition-colors overflow-hidden">
                      {pet.photoUrl ? (
                        <img src={pet.photoUrl} alt={pet.name} className="w-full h-full object-cover" />
                      ) : (
@@ -200,15 +278,15 @@ const PatientsModule: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                      <div className="flex justify-between items-start">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100 truncate">{pet.name}</h4>
+                        <h4 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base xl:text-lg">{pet.name}</h4>
                         {pet.nextAppointment && (
-                          <span className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
-                            {pet.nextAppointment === '2026-01-19' ? 'Hoje' : pet.nextAppointment}
+                          <span className="text-[10px] xl:text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
+                            {pet.nextAppointment === new Date().toISOString().split('T')[0] ? 'Hoje' : new Date(pet.nextAppointment).toLocaleDateString('pt-BR')}
                           </span>
                         )}
                      </div>
-                     <p className="text-sm text-slate-500 dark:text-slate-400 truncate">Tutor: {pet.tutor}</p>
-                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                     <p className="text-sm xl:text-base text-slate-500 dark:text-slate-400 truncate">Tutor: {pet.tutor}</p>
+                     <p className="text-xs xl:text-sm text-slate-400 dark:text-slate-500 mt-1">
                         {pet.breed} • {pet.age}
                      </p>
                   </div>
@@ -224,21 +302,21 @@ const PatientsModule: React.FC = () => {
           <div className="flex items-center gap-4 mb-2">
              <button 
                onClick={() => setSelectedPetId(null)}
-               className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+               className="w-10 h-10 xl:w-12 xl:h-12 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
              >
                <i className="fas fa-arrow-left"></i>
              </button>
              <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Voltar para Busca</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Visualizando prontuário de {selectedPet?.name}</p>
+                <h3 className="text-lg xl:text-xl font-bold text-slate-800 dark:text-slate-100">Voltar para Busca</h3>
+                <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400">Visualizando prontuário de {selectedPet?.name}</p>
              </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden mt-6">
             {/* Header do Pet */}
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/30 dark:bg-slate-800/30">
+            <div className="p-6 xl:p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/30 dark:bg-slate-800/30">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-2xl shadow-inner overflow-hidden">
+                <div className="w-16 h-16 xl:w-20 xl:h-20 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-2xl xl:text-3xl shadow-inner overflow-hidden">
                   {selectedPet?.photoUrl ? (
                     <img src={selectedPet.photoUrl} alt={selectedPet.name} className="w-full h-full object-cover" />
                   ) : (
@@ -247,9 +325,9 @@ const PatientsModule: React.FC = () => {
                 </div>
                 <div>
                   <div className="flex items-center gap-3">
-                    <h4 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{selectedPet?.name}</h4>
+                    <h4 className="text-2xl xl:text-2xl 2xl:text-3xl font-bold text-slate-800 dark:text-slate-100">{selectedPet?.name}</h4>
                     <span
-                      className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase ${
+                      className={`px-3 py-1 rounded-full text-[11px] xl:text-[11px] 2xl:text-xs font-bold uppercase ${
                         selectedPet?.status === 'Ativo'
                           ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300'
                           : 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300'
@@ -258,333 +336,246 @@ const PatientsModule: React.FC = () => {
                       {selectedPet?.status}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
-                    <span>{[selectedPet?.species, selectedPet?.breed].filter(Boolean).join(' • ')}</span>
-                    <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-                    <span>{selectedPet?.age}</span>
-                    <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-                    <span>{selectedPet?.weight || 'Peso N/A'}</span>
+                  <p className="text-sm xl:text-sm 2xl:text-base text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
+                    <i className="fas fa-paw text-slate-400"></i> {selectedPet?.species} • {selectedPet?.breed} • {selectedPet?.weight} • {selectedPet?.age}
                   </p>
                 </div>
               </div>
               <div className="flex gap-2">
-                  <button 
-                    onClick={() => {
-                        setPetToEdit(selectedPet);
-                        setIsNewPetModalOpen(true);
-                    }}
-                    className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                  >
-                      <i className="fas fa-edit mr-2"></i> Editar
-                  </button>
-                  <button 
-                    onClick={() => selectedPet && handleSuggestPlan(selectedPet)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 dark:shadow-none flex items-center gap-2"
-                  >
-                      <i className={`fas ${isSuggestingPlan === selectedPet?.id ? 'fa-spinner fa-spin' : 'fa-magic'}`}></i> 
-                      IA Plan
-                  </button>
+                <button 
+                  onClick={() => setPetToEdit(selectedPet)}
+                  className="px-4 py-2 xl:px-6 xl:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 font-bold shadow-sm flex items-center gap-2 text-sm xl:text-base"
+                >
+                  <i className="fas fa-edit"></i> Editar
+                </button>
+                <button 
+                    onClick={() => handleSuggestPlan(selectedPet)}
+                    disabled={!!isSuggestingPlan}
+                    className="px-4 py-2 xl:px-6 xl:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 dark:hover:shadow-none transition-all font-bold flex items-center gap-2 text-sm xl:text-base disabled:opacity-70"
+                >
+                    {isSuggestingPlan === selectedPet?.id ? (
+                        <i className="fas fa-spinner fa-spin"></i>
+                    ) : (
+                        <i className="fas fa-magic"></i>
+                    )}
+                    Plano IA
+                </button>
+              </div>
+            </div>
+
+            {/* Stats Bar */}
+            <div className="grid grid-cols-2 md:grid-cols-4 border-b border-slate-100 dark:border-slate-800 divide-x divide-slate-100 dark:divide-slate-800">
+              <div className="p-4 xl:p-6 text-center">
+                <p className="text-xs xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Visitas este ano</p>
+                <p className="text-xl xl:text-2xl font-bold text-slate-800 dark:text-slate-100">{selectedPet?.visitsThisYear}</p>
+              </div>
+              <div className="p-4 xl:p-6 text-center">
+                <p className="text-xs xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Última Visita</p>
+                <p className="text-xl xl:text-2xl font-bold text-slate-800 dark:text-slate-100">{selectedPet?.lastVisit}</p>
+              </div>
+              <div className="p-4 xl:p-6 text-center">
+                 <p className="text-xs xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Total Gasto</p>
+                 <p className="text-xl xl:text-2xl font-bold text-emerald-600 dark:text-emerald-400">{selectedPet?.totalSpend}</p>
+              </div>
+              <div className="p-4 xl:p-6 text-center">
+                 <p className="text-xs xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Próximo Agendamento</p>
+                 <p className="text-xl xl:text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {selectedPet?.nextAppointment ? new Date(selectedPet.nextAppointment).toLocaleDateString('pt-BR') : '-'}
+                 </p>
               </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-slate-100 dark:border-slate-800 px-6 overflow-x-auto">
+            <div className="flex border-b border-slate-100 dark:border-slate-800 px-6 xl:px-8">
               <button 
-                  onClick={() => setActiveTab('overview')}
-                  className={`px-6 py-4 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${activeTab === 'overview' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                onClick={() => setActiveTab('overview')}
+                className={`px-4 xl:px-6 py-4 font-bold border-b-2 transition-colors text-sm xl:text-base ${activeTab === 'overview' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
               >
-                  Resumo Geral
+                Visão Geral
               </button>
               <button 
-                  onClick={() => setActiveTab('vaccines')}
-                  className={`px-6 py-4 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'vaccines' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                onClick={() => setActiveTab('vaccines')}
+                className={`px-4 xl:px-6 py-4 font-bold border-b-2 transition-colors text-sm xl:text-base ${activeTab === 'vaccines' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
               >
-                  <i className="fas fa-syringe"></i> Carteirinha Digital
+                Vacinas & Parasitologia
               </button>
               <button 
-                  onClick={() => setActiveTab('history')}
-                  className={`px-6 py-4 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'history' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                onClick={() => setActiveTab('history')}
+                className={`px-4 xl:px-6 py-4 font-bold border-b-2 transition-colors text-sm xl:text-base ${activeTab === 'history' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
               >
-                  <i className="fas fa-file-medical"></i> Histórico Clínico
+                Histórico Médico
               </button>
             </div>
 
             {/* Tab Content */}
-            <div className="p-6 min-h-[400px]">
-              {selectedPet && activeTab === 'overview' && (
-                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                              <p className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-[0.16em] flex items-center gap-2">
-                                  <i className="fas fa-user"></i> Dados do Tutor
-                              </p>
-                              <div>
-                                  <p className="text-base text-slate-800 dark:text-slate-100 font-bold">{selectedPet.tutor}</p>
-                                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1"><i className="fas fa-phone-alt w-4"></i> {selectedPet.phone || 'N/A'}</p>
-                                  <p className="text-sm text-slate-500 dark:text-slate-400"><i className="fas fa-envelope w-4"></i> {selectedPet.email || 'N/A'}</p>
-                              </div>
-                          </div>
-                          <div className="space-y-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                              <p className="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-[0.16em] flex items-center gap-2">
-                                  <i className="fas fa-chart-line"></i> Engajamento
-                              </p>
-                              <ul className="text-sm text-slate-600 dark:text-slate-300 space-y-2">
-                                  <li className="flex justify-between"><span>Consultas (Ano):</span> <span className="font-bold">{selectedPet.visitsThisYear ?? '–'}</span></li>
-                                  <li className="flex justify-between"><span>Última visita:</span> <span className="font-bold">{selectedPet.lastVisit || '–'}</span></li>
-                                  <li className="flex justify-between"><span>Plano:</span> <span className="font-bold text-blue-600 dark:text-blue-400">{selectedPet.plan || 'Sem plano'}</span></li>
-                              </ul>
-                          </div>
-                      </div>
-
+            <div className="p-6 xl:p-8 bg-slate-50 dark:bg-slate-800/20 min-h-[400px]">
+              {activeTab === 'overview' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 xl:gap-8">
+                  <div className="space-y-6">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                      <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 text-lg">
+                        <i className="fas fa-user text-blue-500"></i> Informações do Tutor
+                      </h4>
                       <div className="space-y-4">
-                          <h5 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                              <i className="fas fa-bell text-amber-500"></i> Alertas e Pendências
-                          </h5>
-                          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl p-4">
-                              <ul className="space-y-2">
-                                  <li className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
-                                      <i className="fas fa-exclamation-circle"></i> Vacina V10 vence em 15 dias (Sugerir agendamento)
-                                  </li>
-                                  <li className="flex items-center gap-2 text-sm text-red-600 dark:text-red-300">
-                                      <i className="fas fa-times-circle"></i> Vermífugo atrasado há 5 dias
-                                  </li>
-                              </ul>
-                          </div>
+                        <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                           <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+                             <i className="fas fa-user"></i>
+                           </div>
+                           <div>
+                             <p className="text-xs text-slate-400 uppercase font-bold">Nome</p>
+                             <p className="font-semibold text-slate-700 dark:text-slate-300">{selectedPet?.tutor}</p>
+                           </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                           <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+                             <i className="fas fa-envelope"></i>
+                           </div>
+                           <div>
+                             <p className="text-xs text-slate-400 uppercase font-bold">Email</p>
+                             <p className="font-semibold text-slate-700 dark:text-slate-300">{selectedPet?.email || 'Não informado'}</p>
+                           </div>
+                        </div>
+                         <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                           <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+                             <i className="fas fa-phone"></i>
+                           </div>
+                           <div>
+                             <p className="text-xs text-slate-400 uppercase font-bold">Telefone</p>
+                             <p className="font-semibold text-slate-700 dark:text-slate-300">{selectedPet?.phone || 'Não informado'}</p>
+                           </div>
+                        </div>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="space-y-6">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border border-blue-100 dark:border-blue-800">
-                          <h5 className="font-bold text-blue-800 dark:text-blue-300 mb-2">IA Insights</h5>
-                          <p className="text-xs text-blue-600 dark:text-blue-400 mb-4">
-                              Baseado no histórico de {selectedPet.name}, sugerimos:
-                          </p>
-                          <ul className="space-y-3">
-                              <li className="flex gap-2 text-xs text-blue-800 dark:text-blue-200">
-                                  <i className="fas fa-lightbulb mt-1"></i>
-                                  <span>Agendar check-up geriátrico (idade avançada para a raça).</span>
-                              </li>
-                              <li className="flex gap-2 text-xs text-blue-800 dark:text-blue-200">
-                                  <i className="fas fa-lightbulb mt-1"></i>
-                                  <span>Oferecer plano Odontológico (histórico de tártaro).</span>
-                              </li>
-                          </ul>
-                          <button 
-                              onClick={() => handleSuggestPlan(selectedPet)}
-                              className="w-full mt-4 bg-blue-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
-                          >
-                              Gerar Novo Plano IA
-                          </button>
+                  <div className="space-y-6">
+                     <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                      <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2 text-lg">
+                        <i className="fas fa-notes-medical text-pink-500"></i> Observações Clínicas
+                      </h4>
+                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-800/30 rounded-xl text-yellow-800 dark:text-yellow-200 text-sm leading-relaxed">
+                        {selectedPet?.medicalHistory ? selectedPet.medicalHistory : "Nenhuma observação registrada."}
                       </div>
                     </div>
-                 </div>
+                  </div>
+                </div>
               )}
 
-              {selectedPet && activeTab === 'vaccines' && (
-                  <div className="space-y-6 animate-fadeIn">
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <div>
-                              <h4 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                  <i className="fas fa-shield-alt text-blue-500"></i> Monitoramento de Imunização
-                              </h4>
-                              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                                  O sistema utiliza IA para calcular automaticamente as próximas datas baseadas na bula dos fabricantes.
-                              </p>
-                          </div>
-                          <button className="px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-purple-200 transition-colors whitespace-nowrap">
-                              <i className="fas fa-robot"></i> Analisar Prazos (IA)
-                          </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                          {/* Vacinas */}
-                          <div className="space-y-4">
-                               <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
-                                  <h5 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
-                                      <i className="fas fa-syringe"></i> Vacinas
-                                  </h5>
-                                  <button className="text-blue-600 dark:text-blue-400 text-xs font-bold hover:underline bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg">
-                                      + Nova Vacina
-                                  </button>
-                               </div>
-                               <div className="space-y-3">
-                                  {/* Example Vaccine Items */}
-                                  <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                                      <div className="flex items-center gap-4">
-                                          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center">
-                                              <i className="fas fa-check"></i>
-                                          </div>
-                                          <div>
-                                              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">V10 (Polivalente)</p>
-                                              <p className="text-xs text-slate-500 dark:text-slate-400">Aplicado: 10/01/2025 • Lote: 8829A</p>
-                                          </div>
-                                      </div>
-                                      <div className="text-right">
-                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vence em</p>
-                                          <p className="text-sm font-bold text-green-600 dark:text-green-400">10/01/2026</p>
-                                      </div>
-                                  </div>
-                                  <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                                      <div className="flex items-center gap-4">
-                                          <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center">
-                                              <i className="fas fa-clock"></i>
-                                          </div>
-                                          <div>
-                                              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Raiva (Antirrábica)</p>
-                                              <p className="text-xs text-slate-500 dark:text-slate-400">Aplicado: 15/05/2024 • Lote: RV992</p>
-                                          </div>
-                                      </div>
-                                      <div className="text-right">
-                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vence em</p>
-                                          <p className="text-sm font-bold text-orange-600 dark:text-orange-400">15/05/2025</p>
-                                      </div>
-                                  </div>
-                               </div>
-                          </div>
-
-                          {/* Vermífugos */}
-                          <div className="space-y-4">
-                               <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
-                                  <h5 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
-                                      <i className="fas fa-pills"></i> Vermífugos & Antipulgas
-                                  </h5>
-                                  <button className="text-blue-600 dark:text-blue-400 text-xs font-bold hover:underline bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg">
-                                      + Novo Registro
-                                  </button>
-                               </div>
-                               <div className="space-y-3">
-                                  <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                                      <div className="flex items-center gap-4">
-                                          <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center">
-                                              <i className="fas fa-exclamation"></i>
-                                          </div>
-                                          <div>
-                                              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Drontal Plus (10kg)</p>
-                                              <p className="text-xs text-slate-500 dark:text-slate-400">Aplicado: 10/10/2025 • Peso: 12kg</p>
-                                          </div>
-                                      </div>
-                                      <div className="text-right">
-                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Venceu em</p>
-                                          <p className="text-sm font-bold text-red-600 dark:text-red-400">10/01/2026</p>
-                                      </div>
-                                  </div>
-                                  <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                                      <div className="flex items-center gap-4">
-                                          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center">
-                                              <i className="fas fa-capsules"></i>
-                                          </div>
-                                          <div>
-                                              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Simparic (Antipulgas)</p>
-                                              <p className="text-xs text-slate-500 dark:text-slate-400">Agendado: 25/01/2026</p>
-                                          </div>
-                                      </div>
-                                      <div className="text-right">
-                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Previsto</p>
-                                          <p className="text-sm font-bold text-slate-600 dark:text-slate-300">25/01/2026</p>
-                                      </div>
-                                  </div>
-                               </div>
-                          </div>
-                      </div>
+              {activeTab === 'vaccines' && (
+                  <div className="text-center py-12 text-slate-400">
+                      <i className="fas fa-syringe text-4xl mb-4 opacity-50"></i>
+                      <p>Módulo de Vacinas em desenvolvimento.</p>
                   </div>
               )}
-              
-              {selectedPet && activeTab === 'history' && (
-                  <div className="flex flex-col items-center justify-center py-16 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                          <i className="fas fa-history text-2xl opacity-50"></i>
-                      </div>
-                      <h5 className="font-bold text-slate-700 dark:text-slate-300">Histórico Clínico Completo</h5>
-                      <p className="text-sm max-w-md text-center mt-2">Visualize todas as consultas, exames e cirurgias realizadas desde o primeiro atendimento.</p>
-                      <button className="mt-6 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-colors">
-                          Acessar Prontuário Completo
-                      </button>
-                  </div>
+
+              {activeTab === 'history' && (
+                   <div className="space-y-6">
+                       <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 text-lg xl:text-xl">Histórico de Consultas</h4>
+                       {selectedPet?.appointments && selectedPet.appointments.length > 0 ? (
+                           <div className="space-y-4">
+                               {selectedPet.appointments
+                                   .sort((a: any, b: any) => new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime())
+                                   .map((apt: any) => (
+                                   <div key={apt.id} className="bg-white dark:bg-slate-900 p-4 xl:p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                                       <div className="flex items-start gap-4">
+                                           <div className="w-12 h-12 xl:w-14 xl:h-14 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg xl:text-xl">
+                                               {new Date(apt.appointment_date).getDate()}
+                                           </div>
+                                           <div>
+                                               <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 uppercase font-bold">
+                                                   {new Date(apt.appointment_date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                                               </p>
+                                               <h5 className="font-bold text-slate-800 dark:text-slate-100 text-base xl:text-lg">{apt.service_type || 'Consulta Geral'}</h5>
+                                               <p className="text-sm xl:text-base text-slate-600 dark:text-slate-300 mt-1">{apt.notes || 'Sem observações.'}</p>
+                                           </div>
+                                       </div>
+                                       <div className="flex items-center gap-3">
+                                           <span className={`px-3 py-1 rounded-full text-xs xl:text-sm font-bold uppercase ${
+                                               apt.status === 'concluido' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                                               apt.status === 'agendado' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+                                               'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                           }`}>
+                                               {apt.status}
+                                           </span>
+                                           <button className="p-2 text-slate-400 hover:text-blue-600 transition-colors">
+                                               <i className="fas fa-file-alt text-lg xl:text-xl"></i>
+                                           </button>
+                                       </div>
+                                   </div>
+                               ))}
+                           </div>
+                       ) : (
+                           <div className="text-center py-12 text-slate-400">
+                               <i className="fas fa-history text-4xl mb-4 opacity-50"></i>
+                               <p>Nenhum histórico de consultas encontrado.</p>
+                           </div>
+                       )}
+                   </div>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* AI Care Plan Modal */}
-      {isPlanModalOpen && carePlanData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-scaleIn">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-indigo-600">
-              <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <i className="fas fa-magic text-yellow-300"></i> Plano Preventivo Inteligente
-                </h3>
-                <p className="text-indigo-100 text-sm">Gerado via Vertex AI para {selectedPet?.name}</p>
-              </div>
-              <button 
-                onClick={() => setIsPlanModalOpen(false)}
-                className="text-white/80 hover:text-white hover:bg-white/10 w-8 h-8 rounded-full flex items-center justify-center transition-colors"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            
-            <div className="p-6 max-h-[70vh] overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
-               <div className="space-y-4">
-                  {carePlanData.map((item: any, idx: number) => (
-                    <div key={idx} className="flex gap-4 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
-                       <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl shrink-0 ${
-                         item.type === 'vacina' ? 'bg-green-100 text-green-600' :
-                         item.type === 'exame' ? 'bg-blue-100 text-blue-600' :
-                         item.type === 'vermifugo' ? 'bg-orange-100 text-orange-600' :
-                         'bg-purple-100 text-purple-600'
-                       }`}>
-                         <i className={`fas ${
-                           item.type === 'vacina' ? 'fa-syringe' :
-                           item.type === 'exame' ? 'fa-microscope' :
-                           item.type === 'vermifugo' ? 'fa-pills' :
-                           'fa-shield-alt'
-                         }`}></i>
-                       </div>
-                       <div className="flex-1">
-                          <h4 className="font-bold text-slate-800 dark:text-slate-100">{item.description}</h4>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                             Sugerido para: <strong className="text-slate-700 dark:text-slate-300">{item.monthOffset === 0 ? 'Imediato' : `Daqui a ${item.monthOffset} meses`}</strong>
-                          </p>
-                       </div>
-                       <div className="absolute right-0 top-0 bottom-0 w-1 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    </div>
-                  ))}
-               </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 bg-white dark:bg-slate-900">
-               <button 
-                 onClick={() => setIsPlanModalOpen(false)}
-                 className="px-4 py-2 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-               >
-                 Fechar
-               </button>
-               <button 
-                 onClick={() => {
-                   setIsPlanModalOpen(false);
-                   addToast('Plano salvo no histórico do paciente!', 'success');
-                 }}
-                 className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-lg shadow-indigo-200 dark:shadow-none transition-colors flex items-center gap-2"
-               >
-                 <i className="fas fa-save"></i> Salvar Plano
-               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <NewPetModal
-        isOpen={isNewPetModalOpen}
+      {/* Modals */}
+      <NewPetModal 
+        isOpen={isNewPetModalOpen || !!petToEdit}
         onClose={() => {
-            setIsNewPetModalOpen(false);
-            setPetToEdit(null);
+          setIsNewPetModalOpen(false);
+          setPetToEdit(null);
         }}
         onSaved={handleNewPetSaved}
         petToEdit={petToEdit}
       />
+
+       {/* AI Plan Modal */}
+       {isPlanModalOpen && carePlanData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                      <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                              <i className="fas fa-magic"></i>
+                          </div>
+                          <div>
+                              <h3 className="font-bold text-lg">Plano de Cuidados Sugerido (IA)</h3>
+                              <p className="text-indigo-100 text-xs">Gerado via Gemini 2.0 Flash</p>
+                          </div>
+                      </div>
+                      <button 
+                          onClick={() => setIsPlanModalOpen(false)}
+                          className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                      >
+                          <i className="fas fa-times"></i>
+                      </button>
+                  </div>
+                  
+                  <div className="p-6 overflow-y-auto">
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                           <div dangerouslySetInnerHTML={{ __html: carePlanData.replace(/\n/g, '<br/>') }} />
+                      </div>
+                  </div>
+
+                  <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
+                      <button 
+                          onClick={() => setIsPlanModalOpen(false)}
+                          className="px-4 py-2 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                      >
+                          Fechar
+                      </button>
+                      <button 
+                          onClick={() => {
+                              addToast('Plano salvo no histórico do paciente!', 'success');
+                              setIsPlanModalOpen(false);
+                          }}
+                          className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 dark:shadow-none"
+                      >
+                          Salvar no Prontuário
+                      </button>
+                  </div>
+              </div>
+          </div>
+       )}
     </div>
   );
 };

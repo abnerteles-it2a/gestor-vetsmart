@@ -21,7 +21,7 @@ import os from 'os';
 
 const app = express();
 const port = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-vetsmart';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-vetpro';
 
 // Knowledge Base Configuration
 const storage = new Storage();
@@ -305,6 +305,7 @@ async function ensureSchema() {
                 min_stock_level INTEGER DEFAULT 5,
                 unit VARCHAR(20) DEFAULT 'un',
                 expiry_date DATE,
+                supplier VARCHAR(255),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -321,9 +322,20 @@ async function ensureSchema() {
                 type VARCHAR(50) NOT NULL,
                 status VARCHAR(50) DEFAULT 'agendado',
                 notes TEXT,
+                room VARCHAR(50) DEFAULT 'Sala 1',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+        `);
+
+        // Update Appointments to include room
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='appointments' AND column_name='room') THEN
+                    ALTER TABLE appointments ADD COLUMN room VARCHAR(50) DEFAULT 'Sala 1';
+                END IF;
+            END $$;
         `);
 
         // Sales
@@ -332,11 +344,40 @@ async function ensureSchema() {
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id),
                 tutor_id INTEGER REFERENCES tutors(id),
+                pet_id INTEGER REFERENCES pets(id),
                 total_amount DECIMAL(10,2) NOT NULL,
                 payment_method VARCHAR(50),
                 status VARCHAR(50) DEFAULT 'concluido',
-                sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                description TEXT,
+                service_type VARCHAR(100)
             );
+        `);
+
+        // Update Sales to include description, service_type and pet_id
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sales' AND column_name='description') THEN
+                    ALTER TABLE sales ADD COLUMN description TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sales' AND column_name='service_type') THEN
+                    ALTER TABLE sales ADD COLUMN service_type VARCHAR(100);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sales' AND column_name='pet_id') THEN
+                    ALTER TABLE sales ADD COLUMN pet_id INTEGER REFERENCES pets(id);
+                END IF;
+            END $$;
+        `);
+
+        // Update Products to include supplier
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='supplier') THEN
+                    ALTER TABLE products ADD COLUMN supplier VARCHAR(255);
+                END IF;
+            END $$;
         `);
 
         // Sale Items
@@ -411,6 +452,20 @@ async function ensureSchema() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
+
+        // Ensure Admin User
+        const adminEmail = 'admin@vetpro.com';
+        const adminCheck = await client.query('SELECT id FROM users WHERE email = $1', [adminEmail]);
+        
+        if (adminCheck.rows.length === 0) {
+            console.log('👤 Criando usuário admin padrão...');
+            const { hash, salt } = hashPassword('123456');
+            await client.query(`
+                INSERT INTO users (name, email, password_hash, password_salt, role)
+                VALUES ('Dr. Ricardo Silva', $1, $2, $3, 'admin')
+                ON CONFLICT (email) DO NOTHING
+            `, [adminEmail, hash, salt]);
+        }
 
         await client.query('COMMIT');
         console.log('✅ Schema verificado com sucesso.');
@@ -558,7 +613,7 @@ app.put('/api/pets/:id', async (req, res) => {
 app.get('/api/appointments', async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT a.*, p.name as pet_name, p.species, t.name as tutor_name, u.name as vet_name
+            SELECT a.*, p.name as pet_name, p.species, t.name as tutor_name, t.phone as tutor_phone, u.name as vet_name
             FROM appointments a
             LEFT JOIN pets p ON a.pet_id = p.id
             LEFT JOIN tutors t ON p.tutor_id = t.id
@@ -573,11 +628,11 @@ app.get('/api/appointments', async (req, res) => {
 });
 
 app.post('/api/appointments', async (req, res) => {
-    const { pet_id, vet_id, appointment_date, type, reason } = req.body;
+    const { pet_id, vet_id, appointment_date, type, reason, room, status, notes } = req.body;
     try {
         const result = await pool.query(
-            'INSERT INTO appointments (pet_id, vet_id, appointment_date, type, reason) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [pet_id, vet_id, appointment_date, type, reason]
+            'INSERT INTO appointments (pet_id, vet_id, appointment_date, type, reason, room, status, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [pet_id, vet_id, appointment_date, type, reason, room || 'Sala 1', status || 'agendado', notes]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -594,6 +649,20 @@ app.get('/api/products', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Erro ao buscar produtos' });
+    }
+});
+
+app.post('/api/products', authenticateToken, async (req, res) => {
+    const { name, category, price, stock_quantity, min_stock_level, sku, supplier, expiry_date } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO products (name, category, price, stock_quantity, min_stock_level, sku, supplier, expiry_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [name, category, price, stock_quantity, min_stock_level, sku, supplier, expiry_date]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao criar produto' });
     }
 });
 
@@ -640,6 +709,41 @@ app.post('/api/surgeries', async (req, res) => {
     }
 });
 
+// MEDICAL RECORDS
+app.get('/api/medical-records/:petId', authenticateToken, async (req, res) => {
+    const { petId } = req.params;
+    try {
+        const result = await pool.query(
+            `SELECT mr.*, u.name as vet_name 
+             FROM medical_records mr 
+             LEFT JOIN users u ON mr.vet_id = u.id 
+             WHERE mr.pet_id = $1 
+             ORDER BY mr.date DESC`,
+            [petId]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao buscar prontuários' });
+    }
+});
+
+app.post('/api/medical-records', authenticateToken, async (req, res) => {
+    const { petId, vetId, date, subjective, objective, assessment, plan, diagnosis, urgency } = req.body;
+    try {
+        const result = await pool.query(
+            `INSERT INTO medical_records (pet_id, vet_id, date, subjective, objective, assessment, plan, diagnosis, urgency)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING *`,
+            [petId, vetId, date, subjective, objective, assessment, plan, diagnosis, urgency]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao criar prontuário' });
+    }
+});
+
 // CAMPAIGNS
 app.get('/api/campaigns', async (req, res) => {
     try {
@@ -675,13 +779,13 @@ app.get('/api/plans', authenticateToken, async (req, res) => {
 
 // SALES (POST)
 app.post('/api/sales', authenticateToken, async (req, res) => {
-    const { tutor_id, total_amount, payment_method, status, items } = req.body;
+    const { tutor_id, pet_id, total_amount, payment_method, status, items, description, service_type } = req.body;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         const saleRes = await client.query(
-            'INSERT INTO sales (user_id, tutor_id, total_amount, payment_method, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [req.user.id, tutor_id, total_amount, payment_method, status || 'concluido']
+            'INSERT INTO sales (user_id, tutor_id, pet_id, total_amount, payment_method, status, description, service_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [req.user.id, tutor_id, pet_id, total_amount, payment_method, status || 'concluido', description, service_type]
         );
         const sale = saleRes.rows[0];
 

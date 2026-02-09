@@ -1,4 +1,4 @@
-# 🐾 Gestor Vetsmart
+# 🐾 Gestor VetPro
 
 > Sistema Inteligente de Gestão Veterinária com IA integrada.
 
@@ -7,7 +7,7 @@
 ![Tailwind](https://img.shields.io/badge/tailwind-3.x-38bdf8)
 ![Status](https://img.shields.io/badge/status-MVP%20Complete-green)
 
-O **Gestor Vetsmart** é uma solução completa para clínicas veterinárias, integrando gestão de pacientes, agendamentos, financeiro e estoque com recursos avançados de Inteligência Artificial para auxílio diagnóstico e previsão de demanda.
+O **Gestor VetPro** é uma solução completa para clínicas veterinárias, integrando gestão de pacientes, agendamentos, financeiro e estoque com recursos avançados de Inteligência Artificial para auxílio diagnóstico e previsão de demanda.
 
 ---
 
@@ -56,7 +56,7 @@ O **Gestor Vetsmart** é uma solução completa para clínicas veterinárias, in
 1. **Clone o repositório**
    ```bash
    git clone https://github.com/seu-usuario/gestor-vetsmart.git
-   cd gestor-vetsmart
+   cd gestor-vetpro
    ```
 
 2. **Instale as dependências**
@@ -77,7 +77,7 @@ O **Gestor Vetsmart** é uma solução completa para clínicas veterinárias, in
 5. **Acesse a aplicação**
    - Abra `http://localhost:3020` (ou a porta indicada no terminal).
    - **Login de Demonstração**:
-     - Email: `admin@vetsmart.com` (ou qualquer email)
+     - Email: `admin@vetpro.com` (ou qualquer email)
      - Senha: `admin` (ou qualquer senha)
 
 ---

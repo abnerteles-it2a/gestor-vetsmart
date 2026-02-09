@@ -150,8 +150,8 @@ const FinancialModule: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%" minHeight={288}>
                             <BarChart data={dataCashFlow}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                                 <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
@@ -192,8 +192,8 @@ const FinancialModule: React.FC = () => {
                             </p>
                         </div>
                     </div>
-                    <div className="h-[300px] w-full flex items-center justify-center min-h-[300px]">
-                         <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+                    <div className="h-72 w-full flex items-center justify-center min-h-[18rem]">
+                         <ResponsiveContainer width="100%" height="100%" minHeight={288}>
                             <PieChart>
                                 <Pie
                                     data={dataDRE}

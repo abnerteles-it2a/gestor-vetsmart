@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
+import { useNavigation } from '../context/NavigationContext';
 import { apiService } from '../services/api';
+import { getHospitalizationRound } from '../services/vertexAiService';
 import { PetSpecies } from '../types';
 
 interface Patient {
-  id: string;
+  id: string; // Hospitalization ID
+  petId: string; // Pet ID for linking
   name: string;
   species: PetSpecies;
   tutor: string;
@@ -16,10 +19,10 @@ interface Patient {
 }
 
 import { NewAdmissionModal } from './NewItemModals';
-import { mockDataService } from '../services/mockDataService';
 
 const HospitalizationModule: React.FC = () => {
   const { addToast } = useToast();
+  const { navigateTo } = useNavigation();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedBay, setSelectedBay] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -33,10 +36,26 @@ const HospitalizationModule: React.FC = () => {
   React.useEffect(() => {
     const loadPatients = async () => {
       try {
-        const data = await mockDataService.getHospitalization();
-        setPatients(data);
+        const response = await apiService.getHospitalizations();
+        const data = response.data;
+        
+        const mappedPatients: Patient[] = data.map((h: any) => ({
+            id: h.id.toString(),
+            petId: h.pet_id.toString(),
+            name: h.pet_name,
+            species: h.species === 'Gato' ? PetSpecies.CAT : PetSpecies.DOG,
+            tutor: h.tutor_name,
+            reason: h.reason,
+            admissionDate: new Date(h.admission_date).toLocaleDateString('pt-BR'),
+            nextMedication: h.next_medication_time ? new Date(h.next_medication_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '---',
+            status: h.status as 'stable' | 'critical' | 'recovering',
+            bay: h.bay
+        }));
+
+        setPatients(mappedPatients);
       } catch (e) {
         console.error("Error loading hospitalization data", e);
+        addToast("Erro ao carregar internações", "error");
       } finally {
         setLoading(false);
       }
@@ -84,43 +103,43 @@ const HospitalizationModule: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Internação</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300">Monitoramento de pacientes e gestão de baias.</p>
+          <h3 className="text-lg md:text-xl xl:text-2xl font-bold text-slate-800 dark:text-slate-100">Internação</h3>
+          <p className="text-xs md:text-sm xl:text-base text-slate-600 dark:text-slate-300">Monitoramento de pacientes e gestão de baias.</p>
         </div>
         <button
           onClick={handleSmartRound}
           disabled={isProcessing}
-          className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-teal-200 dark:shadow-none hover:shadow-teal-300 hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-4 py-2 xl:px-6 xl:py-2 rounded-xl font-bold shadow-lg shadow-teal-200 dark:shadow-none hover:shadow-teal-300 hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed text-xs md:text-sm xl:text-base"
         >
           <i className={`fas ${isProcessing ? 'fa-spinner fa-spin' : 'fa-clipboard-check'}`}></i>
           {isProcessing ? 'Analisando...' : 'Ronda Inteligente IA'}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 xl:gap-6">
         {/* Mapa de Baias */}
-        <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="xl:col-span-3 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {bays.map(bay => {
             const patient = getPatientInBay(bay.id);
             return (
               <div
                 key={bay.id}
                 onClick={() => setSelectedBay(bay.id)}
-                className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer group ${selectedBay === bay.id
+                className={`relative p-3 xl:p-4 rounded-2xl border-2 transition-all cursor-pointer group ${selectedBay === bay.id
                     ? 'border-blue-500 shadow-lg ring-2 ring-blue-200 dark:ring-blue-900'
                     : 'border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700'
                   } ${patient ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/50'}`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <span className={`text-xs font-bold uppercase px-2 py-1 rounded-lg ${bay.type === 'Isolamento' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
+                  <span className={`text-[10px] xl:text-sm font-bold uppercase px-2 py-1 rounded-lg ${bay.type === 'Isolamento' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
                       'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
                     }`}>
                     {bay.label}
                   </span>
                   {patient && (
-                    <div className={`w-3 h-3 rounded-full animate-pulse ${patient.status === 'critical' ? 'bg-red-500' :
+                    <div className={`w-2.5 h-2.5 xl:w-3 xl:h-3 rounded-full animate-pulse ${patient.status === 'critical' ? 'bg-red-500' :
                         patient.status === 'recovering' ? 'bg-blue-500' : 'bg-green-500'
                       }`} title={`Status: ${patient.status}`}></div>
                   )}
@@ -129,23 +148,23 @@ const HospitalizationModule: React.FC = () => {
                 {patient ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${patient.species === PetSpecies.CAT ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
-                        <i className={`fas ${patient.species === PetSpecies.CAT ? 'fa-cat' : 'fa-dog'}`}></i>
+                      <div className={`w-8 h-8 xl:w-10 xl:h-10 rounded-lg flex items-center justify-center ${patient.species === PetSpecies.CAT ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                        <i className={`fas ${patient.species === PetSpecies.CAT ? 'fa-cat' : 'fa-dog'} text-sm xl:text-base`}></i>
                       </div>
-                      <div>
-                        <p className="font-bold text-slate-800 dark:text-slate-100 leading-tight">{patient.name}</p>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate w-20">{patient.reason}</p>
+                      <div className="overflow-hidden">
+                        <p className="font-bold text-slate-800 dark:text-slate-100 leading-tight text-xs xl:text-base truncate">{patient.name}</p>
+                        <p className="text-[10px] xl:text-xs text-slate-500 dark:text-slate-400 truncate">{patient.reason}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-2 rounded-lg">
+                    <div className="flex items-center gap-1 text-[10px] xl:text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-1.5 xl:p-2 rounded-lg">
                       <i className="fas fa-clock text-blue-500"></i>
-                      <span>Prox. Med: <strong>{patient.nextMedication}</strong></span>
+                      <span className="truncate">Prox: <strong>{patient.nextMedication}</strong></span>
                     </div>
                   </div>
                 ) : (
-                  <div className="h-20 flex flex-col items-center justify-center text-slate-300 dark:text-slate-600">
-                    <i className="fas fa-door-open text-2xl mb-1"></i>
-                    <span className="text-xs font-medium">Livre</span>
+                  <div className="h-16 xl:h-20 flex flex-col items-center justify-center text-slate-300 dark:text-slate-600">
+                    <i className="fas fa-door-open text-xl xl:text-2xl mb-1"></i>
+                    <span className="text-[10px] xl:text-xs font-medium">Livre</span>
                   </div>
                 )}
               </div>
@@ -154,8 +173,8 @@ const HospitalizationModule: React.FC = () => {
         </div>
 
         {/* Painel Lateral de Detalhes */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm h-fit sticky top-24">
-          <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 xl:p-6 shadow-sm h-fit sticky top-24">
+          <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 border-b border-slate-100 dark:border-slate-800 pb-2 text-base xl:text-xl">
             Detalhes da Baia
           </h4>
 
@@ -163,46 +182,67 @@ const HospitalizationModule: React.FC = () => {
             getPatientInBay(selectedBay) ? (
               <div className="space-y-4 animate-in fade-in duration-300">
                 <div className="text-center mb-4">
-                  <div className="w-20 h-20 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-4xl mb-2">
+                  <div className="w-16 h-16 xl:w-20 xl:h-20 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-3xl xl:text-4xl mb-2">
                     <i className={`fas ${getPatientInBay(selectedBay)?.species === PetSpecies.CAT ? 'fa-cat text-orange-500' : 'fa-dog text-blue-500'}`}></i>
                   </div>
-                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{getPatientInBay(selectedBay)?.name}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{getPatientInBay(selectedBay)?.tutor}</p>
+                  <h3 className="text-lg xl:text-2xl font-bold text-slate-800 dark:text-slate-100">{getPatientInBay(selectedBay)?.name}</h3>
+                  <p className="text-xs xl:text-base text-slate-500 dark:text-slate-400">{getPatientInBay(selectedBay)?.tutor}</p>
                 </div>
 
                 <div className={`p-3 rounded-xl border ${getStatusColor(getPatientInBay(selectedBay)?.status || '')}`}>
-                  <p className="text-xs font-bold uppercase opacity-70 mb-1">Status Clínico</p>
-                  <p className="font-bold capitalize">{getPatientInBay(selectedBay)?.status === 'stable' ? 'Estável' : getPatientInBay(selectedBay)?.status === 'critical' ? 'Crítico' : 'Em Recuperação'}</p>
+                  <p className="text-[10px] xl:text-sm font-bold uppercase opacity-70 mb-1">Status Clínico</p>
+                  <p className="font-bold capitalize text-sm xl:text-base">{getPatientInBay(selectedBay)?.status === 'stable' ? 'Estável' : getPatientInBay(selectedBay)?.status === 'critical' ? 'Crítico' : 'Em Recuperação'}</p>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs xl:text-base">
                     <span className="text-slate-500 dark:text-slate-400">Admissão</span>
                     <span className="font-medium text-slate-800 dark:text-slate-200">{getPatientInBay(selectedBay)?.admissionDate}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs xl:text-base">
+                    <span className="text-slate-500 dark:text-slate-400">Próx. Medicação</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{getPatientInBay(selectedBay)?.nextMedication}</span>
+                  </div>
+                  <div className="flex justify-between text-xs xl:text-base">
                     <span className="text-slate-500 dark:text-slate-400">Diagnóstico</span>
                     <span className="font-medium text-slate-800 dark:text-slate-200">{getPatientInBay(selectedBay)?.reason}</span>
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                  <button className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all mb-2">
-                    <i className="fas fa-file-medical-alt mr-2"></i> Ver Prontuário
-                  </button>
-                  <button className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg font-bold transition-all">
-                    <i className="fas fa-syringe mr-2"></i> Administrar Medicação
-                  </button>
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2">
+                    <button 
+                        onClick={() => {
+                            const patient = getPatientInBay(selectedBay);
+                            if (patient && patient.petId) {
+                                navigateTo('patients', { petId: patient.petId, subTab: 'history' });
+                            }
+                        }}
+                        className="w-full bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2 text-xs xl:text-base"
+                    >
+                        <i className="fas fa-file-medical"></i> Ver Prontuário
+                    </button>
+                    <button 
+                        onClick={() => addToast('Funcionalidade de atualização de status em desenvolvimento.', 'info')}
+                        className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-2 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs xl:text-base"
+                    >
+                        <i className="fas fa-edit"></i> Atualizar Status
+                    </button>
+                    <button 
+                        onClick={() => addToast('Funcionalidade de administração de medicação em desenvolvimento.', 'info')}
+                        className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-2 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs xl:text-base"
+                    >
+                        <i className="fas fa-syringe"></i> Administrar Medicação
+                    </button>
                 </div>
               </div>
             ) : (
               <div className="text-center py-8 animate-in fade-in duration-300">
-                <i className="fas fa-check-circle text-4xl text-green-500 mb-3"></i>
-                <p className="font-bold text-slate-800 dark:text-slate-100">Baia Livre</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Disponível para nova internação.</p>
+                <i className="fas fa-check-circle text-3xl xl:text-4xl text-green-500 mb-3"></i>
+                <p className="font-bold text-slate-800 dark:text-slate-100 text-sm xl:text-base">Baia Livre</p>
+                <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 mb-6">Disponível para nova internação.</p>
                 <button
                   onClick={() => setIsAdmissionModalOpen(true)}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all"
+                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all text-xs xl:text-base"
                 >
                   <i className="fas fa-plus mr-2"></i> Internar Paciente
                 </button>
@@ -210,8 +250,8 @@ const HospitalizationModule: React.FC = () => {
             )
           ) : (
             <div className="text-center py-12 text-slate-400">
-              <i className="fas fa-hand-pointer text-3xl mb-2"></i>
-              <p>Selecione uma baia para ver detalhes.</p>
+              <i className="fas fa-hand-pointer text-2xl xl:text-3xl mb-2"></i>
+              <p className="text-xs xl:text-base">Selecione uma baia para ver detalhes.</p>
             </div>
           )}
         </div>

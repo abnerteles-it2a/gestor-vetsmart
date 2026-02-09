@@ -1,6 +1,6 @@
 # Knowledge Base para RAG Veterinário
 
-Esta pasta contém os documentos (PDFs, TXTs) que serão utilizados pela Inteligência Artificial do Gestor Vetsmart para enriquecer os diagnósticos (RAG - Retrieval-Augmented Generation).
+Esta pasta contém os documentos (PDFs, TXTs) que serão utilizados pela Inteligência Artificial do Gestor VetPro para enriquecer os diagnósticos (RAG - Retrieval-Augmented Generation).
 
 ## Como adicionar novos documentos
 

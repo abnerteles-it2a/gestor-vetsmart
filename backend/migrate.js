@@ -194,6 +194,24 @@ async function migrate() {
             );
         `);
 
+        // Medical Records
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS medical_records (
+                id SERIAL PRIMARY KEY,
+                pet_id INTEGER REFERENCES pets(id) ON DELETE CASCADE,
+                vet_id INTEGER REFERENCES users(id),
+                date TIMESTAMP NOT NULL,
+                subjective TEXT,
+                objective TEXT,
+                assessment TEXT,
+                plan TEXT,
+                diagnosis VARCHAR(255),
+                urgency VARCHAR(50),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
         await client.query('COMMIT');
         console.log('✅ Schema inicializado com sucesso.');
     } catch (e) {

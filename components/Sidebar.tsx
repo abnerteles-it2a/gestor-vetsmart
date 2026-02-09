@@ -26,38 +26,39 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <aside className="w-[260px] bg-slate-900 text-slate-300 flex flex-col transition-all duration-300 h-screen sticky top-0">
-      <div className="h-20 flex flex-col justify-center px-6 border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <img src="/logo_white.png" alt="Gestor Vetsmart" className="w-12 h-12 object-contain shrink-0" />
-          <div className="overflow-hidden">
-            <span className="block font-bold text-white text-sm leading-tight truncate">Gestor Vetsmart</span>
+    <aside className="w-20 lg:w-64 bg-slate-900 text-slate-300 flex flex-col transition-all duration-300 h-screen sticky top-0 border-r border-slate-800 z-50 shrink-0">
+      <div className="h-20 flex flex-col justify-center px-4 lg:px-6 border-b border-slate-800">
+        <div className="flex items-center gap-3 justify-center lg:justify-start">
+          <img src="/logo_white.png" alt="Gestor VetPro" className="w-8 h-8 lg:w-12 lg:h-12 object-contain shrink-0" />
+          <div className="overflow-hidden hidden lg:block">
+            <span className="block font-bold text-white text-sm leading-tight truncate">Gestor VetPro</span>
             <span className="block text-[10px] text-slate-400 font-medium truncate uppercase tracking-[0.12em]">By IT2A Ecosystem</span>
           </div>
         </div>
       </div>
       
-      <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 py-6 px-2 lg:px-4 space-y-2 overflow-y-auto overflow-x-hidden">
         {menuItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id)}
-            className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all ${
+            className={`w-full flex items-center justify-center lg:justify-start gap-4 p-3 rounded-xl transition-all ${
               activeTab === item.id 
                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
                 : 'hover:bg-slate-800 hover:text-white'
             }`}
+            title={item.label}
           >
-            <i className={`fas ${item.icon} w-6 text-center`}></i>
-            <span className="hidden lg:block font-medium whitespace-nowrap">{item.label}</span>
+            <i className={`fas ${item.icon} text-xl lg:text-base w-6 text-center`}></i>
+            <span className="hidden lg:block font-medium whitespace-nowrap text-sm">{item.label}</span>
           </button>
         ))}
       </nav>
 
       <div className="p-4 border-t border-slate-800">
-        <button className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-slate-800 transition-all text-slate-400">
-          <i className="fas fa-sign-out-alt w-6 text-center"></i>
-          <span className="hidden lg:block">Sair</span>
+        <button className="w-full flex items-center justify-center lg:justify-start gap-4 p-3 rounded-xl hover:bg-slate-800 transition-all text-slate-400" title="Sair">
+          <i className="fas fa-sign-out-alt text-xl lg:text-base w-6 text-center"></i>
+          <span className="hidden lg:block text-sm">Sair</span>
         </button>
       </div>
     </aside>

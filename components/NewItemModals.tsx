@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
-import { mockDataService } from '../services/mockDataService';
+import { apiService } from '../services/api';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -49,7 +49,6 @@ export const NewTutorModal: React.FC<NewTutorModalProps> = ({ isOpen, onClose, o
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isTutorModalOpen, setIsTutorModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -79,7 +78,8 @@ export const NewTutorModal: React.FC<NewTutorModalProps> = ({ isOpen, onClose, o
         email,
       };
 
-      const savedTutor = await mockDataService.addTutor(payload);
+      const response = await apiService.createTutor(payload);
+      const savedTutor = response.data;
 
       if (onSaved) {
         onSaved(savedTutor);
@@ -161,7 +161,7 @@ export const NewPetModal: React.FC<NewPetModalProps> = ({ isOpen, onClose, onSav
   useEffect(() => {
     if (isOpen) {
       // Load tutors for dropdown
-      mockDataService.getTutors().then(setTutorsList);
+      apiService.getTutors().then(response => setTutorsList(response.data));
       
       if (petToEdit) {
         setName(petToEdit.name || '');
@@ -264,10 +264,12 @@ export const NewPetModal: React.FC<NewPetModalProps> = ({ isOpen, onClose, onSav
 
       let savedPet;
       if (petToEdit) {
-         savedPet = await mockDataService.updatePet(petToEdit.id, payload);
+         const response = await apiService.updatePet(petToEdit.id, payload);
+         savedPet = response.data;
          addToast('Pet atualizado com sucesso!', 'success');
       } else {
-         savedPet = await mockDataService.addPet(payload);
+         const response = await apiService.createPet(payload);
+         savedPet = response.data;
          addToast('Pet adicionado com sucesso!', 'success');
       }
 
@@ -430,7 +432,7 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
 
   useEffect(() => {
     if (isOpen) {
-      mockDataService.getPets().then(setPetsList);
+      apiService.getPets().then(response => setPetsList(response.data));
       setPatientId('');
       setReason('');
       setBayId('');
@@ -440,7 +442,7 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
     }
   }, [isOpen]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!patientId || !reason || !bayId || !nextMedication) {
       setError('Preencha todos os campos obrigatórios.');
       return;
@@ -449,21 +451,33 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
     const selectedPet = petsList.find(p => p.id === patientId);
     if (!selectedPet) return;
 
-    const admissionData = {
-      id: selectedPet.id, // Using pet ID as admission ID for simplicity, or generate new
-      name: selectedPet.name,
-      species: selectedPet.species === 'Gato' ? 'Cat' : 'Dog', // Simple mapping
-      tutor: selectedPet.tutor,
-      reason,
-      admissionDate: new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-      nextMedication,
-      status,
-      bay: bayId
-    };
+    try {
+      const payload = {
+        pet_id: parseInt(patientId),
+        bay: bayId,
+        reason,
+        status,
+        next_medication_time: nextMedication, // Time string HH:mm, backend might need full timestamp or handle it
+        notes: `Internação solicitada por motivo: ${reason}`
+      };
 
-    onSaved(admissionData);
-    addToast('Paciente internado com sucesso!', 'success');
-    onClose();
+      // Ensure next_medication_time is a valid timestamp if backend expects it
+      // Backend definition: next_medication_time TIMESTAMP
+      // So we should combine with today's date or handle it.
+      // Let's assume we use today's date + time
+      const todayStr = new Date().toISOString().split('T')[0];
+      payload.next_medication_time = `${todayStr}T${nextMedication}:00`;
+
+      const response = await apiService.createHospitalization(payload);
+      
+      onSaved(response.data);
+      addToast('Paciente internado com sucesso!', 'success');
+      onClose();
+    } catch (e) {
+      console.error(e);
+      addToast('Erro ao internar paciente.', 'error');
+      setError('Erro ao salvar no banco de dados.');
+    }
   };
 
   return (
@@ -563,8 +577,8 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen
 
   useEffect(() => {
     if (isOpen) {
-      mockDataService.getPets().then(setPetsList);
-      mockDataService.getVets().then(setVetsList);
+      apiService.getPets().then(response => setPetsList(response.data));
+      apiService.getVets().then(response => setVetsList(response.data));
 
       setDate('');
       setTime('');
@@ -601,32 +615,37 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen
     setIsSubmitting(true);
 
     try {
-      const selectedPetObj = petsList.find(p => p.name === pet);
-      const selectedVetObj = vetsList.find(v => v.name === vet);
+      const selectedPetObj = petsList.find(p => p.name === pet); // Note: 'pet' state currently holds name, see select below
+      const selectedVetObj = vetsList.find(v => v.name === vet); // 'vet' state holds name
 
+      if (!selectedPetObj) {
+        setError('Erro: Pet não encontrado na lista.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Backend expects proper IDs
       const payload = {
-        date,
-        time,
-        pet,
-        species: selectedPetObj?.species || '',
-        tutor: selectedPetObj?.tutor || '',
-        service,
-        vet,
-        room: 'Sala 1', // Mock logic
-        type: service.toLowerCase().includes('vacina') ? 'vacina' : service.toLowerCase().includes('cirurgia') ? 'cirurgia' : 'consulta',
-        status: 'confirmado',
+        pet_id: selectedPetObj.id,
+        vet_id: selectedVetObj ? selectedVetObj.id : null,
+        appointment_date: `${date}T${time}:00`,
+        type: service.toLowerCase().includes('vacina') ? 'Vacinação' : service.toLowerCase().includes('cirurgia') ? 'Cirurgia' : 'Consulta',
+        reason: service, // Using service as reason for simplicity
+        room: 'Sala 1', 
+        status: 'agendado',
         notes
       };
 
-      const savedAppointment = await mockDataService.addAppointment(payload);
+      const savedAppointment = await apiService.createAppointment(payload);
 
       if (onSaved) {
-        onSaved(savedAppointment);
+        onSaved(savedAppointment.data);
       }
 
       addToast('Agendamento confirmado!', 'success');
       onClose();
     } catch (e) {
+      console.error(e);
       addToast('Erro ao salvar. Tente novamente.', 'error');
       setError('Erro ao salvar. Tente novamente.');
     } finally {
@@ -727,19 +746,23 @@ interface NewSaleModalProps {
 export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onSaved }) => {
   const { addToast } = useToast();
   const [customer, setCustomer] = useState('');
+  const [petId, setPetId] = useState('');
   const [serviceType, setServiceType] = useState('');
   const [value, setValue] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [status, setStatus] = useState<'Pago' | 'Pendente'>('Pago');
   const [description, setDescription] = useState('');
   const [tutorsList, setTutorsList] = useState<any[]>([]);
+  const [petsList, setPetsList] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      mockDataService.getTutors().then(setTutorsList);
+      apiService.getTutors().then(response => setTutorsList(response.data));
+      apiService.getPets().then(response => setPetsList(response.data));
       setCustomer('');
+      setPetId('');
       setServiceType('');
       setValue('');
       setPaymentMethod('');
@@ -768,25 +791,29 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
     setIsSubmitting(true);
 
     try {
+      const selectedTutor = tutorsList.find(t => t.name === customer);
+      
       const payload = {
-        date: new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-        desc: description,
-        value: `R$ ${numericValue.toFixed(2).replace('.', ',')}`,
-        payment: paymentMethod,
-        status: status === 'Pago' ? 'concluído' : 'pendente',
-        customer,
-        serviceType
+        tutor_id: selectedTutor ? selectedTutor.id : null,
+        pet_id: petId ? parseInt(petId) : null,
+        total_amount: numericValue,
+        payment_method: paymentMethod,
+        status: status === 'Pago' ? 'concluido' : 'pendente',
+        description,
+        service_type: serviceType,
+        items: []
       };
 
-      const savedSale = await mockDataService.addSale(payload);
+      const savedSale = await apiService.createSale(payload);
 
       if (onSaved) {
-        onSaved(savedSale);
+        onSaved(savedSale.data);
       }
 
       addToast('Venda registrada!', 'success');
       onClose();
     } catch (e) {
+      console.error(e);
       addToast('Erro ao salvar. Tente novamente.', 'error');
       setError('Erro ao salvar. Tente novamente.');
     } finally {
@@ -814,6 +841,22 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
               <option key={t.id} value={t.name}>{t.name}</option>
             ))}
             <option value="Cliente Balcão">Cliente Balcão (Avulso)</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Pet (Opcional)</label>
+          <select
+            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            value={petId}
+            onChange={(e) => setPetId(e.target.value)}
+          >
+            <option value="">Selecione um pet</option>
+            {petsList
+              .filter(p => !customer || customer === 'Cliente Balcão' || p.tutor_name === customer || p.tutor === customer)
+              .map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({p.species})</option>
+              ))
+            }
           </select>
         </div>
         <div>
@@ -953,29 +996,24 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
       const payload = {
         name,
         category,
-        stock: qty,
-        minStock: Math.max(1, Math.round(qty * 0.3)),
-        price: `R$ ${priceNumber.toFixed(2).replace('.', ',')}`,
-        status: 'ok', // Default
-        supplier,
-        expirationDate,
-        sku
+        stock_quantity: qty,
+        min_stock_level: Math.max(1, Math.round(qty * 0.3)),
+        price: priceNumber,
+        sku,
+        expiry_date: expirationDate || null,
+        supplier // Added supplier if backend supports it in future (currently not in INSERT but good to have in payload)
       };
 
-      // Mock status logic
-      if (qty <= payload.minStock) payload.status = 'critical';
-      else if (qty <= payload.minStock * 1.5) payload.status = 'warning';
-      else payload.status = 'ok';
-
-      const savedItem = await mockDataService.addItem(payload as any);
+      const savedItem = await apiService.createProduct(payload);
 
       if (onSaved) {
-        onSaved(savedItem);
+        onSaved(savedItem.data);
       }
 
       addToast('Produto adicionado ao estoque!', 'success');
       onClose();
     } catch (e) {
+      console.error(e);
       addToast('Erro ao salvar. Tente novamente.', 'error');
       setError('Erro ao salvar. Tente novamente.');
     } finally {
