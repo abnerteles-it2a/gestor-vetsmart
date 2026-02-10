@@ -33,6 +33,14 @@ const HospitalizationModule: React.FC = () => {
   const [roundResult, setRoundResult] = useState<{ summary: string; critical_alerts: string[]; suggestions: string[] } | null>(null);
   const [isRoundModalOpen, setIsRoundModalOpen] = useState(false);
 
+  // Status Update Modal State
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [statusUpdateData, setStatusUpdateData] = useState({
+    status: 'stable',
+    nextMedication: '',
+    notes: ''
+  });
+
   React.useEffect(() => {
     const loadPatients = async () => {
       try {
@@ -91,6 +99,60 @@ const HospitalizationModule: React.FC = () => {
   };
 
   const getPatientInBay = (bayId: string) => patients.find(p => p.bay === bayId);
+
+  const handleOpenStatusModal = () => {
+    if (!selectedBay) return;
+    const patient = getPatientInBay(selectedBay);
+    if (!patient) return;
+    
+    setStatusUpdateData({
+      status: patient.status,
+      nextMedication: patient.nextMedication !== '---' ? patient.nextMedication : '',
+      notes: ''
+    });
+    setIsStatusModalOpen(true);
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!selectedBay) return;
+    const patient = getPatientInBay(selectedBay);
+    if (!patient) return;
+
+    setIsProcessing(true);
+    try {
+        let nextMedTime = statusUpdateData.nextMedication;
+        if (nextMedTime && nextMedTime.match(/^\d{2}:\d{2}$/)) {
+             const todayStr = new Date().toISOString().split('T')[0];
+             nextMedTime = `${todayStr}T${nextMedTime}:00`;
+        }
+
+        await apiService.updateHospitalization(patient.id, {
+            status: statusUpdateData.status,
+            next_medication_time: nextMedTime || undefined, // Send undefined if empty to avoid overwriting with null if not intended, or handle in backend
+            notes: statusUpdateData.notes
+        });
+        
+        // Refresh local state immediately
+        setPatients(prev => prev.map(p => {
+            if (p.id === patient.id) {
+                return {
+                    ...p,
+                    status: statusUpdateData.status as any,
+                    nextMedication: statusUpdateData.nextMedication || p.nextMedication
+                };
+            }
+            return p;
+        }));
+
+        addToast('Status atualizado com sucesso!', 'success');
+        setIsStatusModalOpen(false);
+    } catch (e) {
+        console.error(e);
+        addToast('Erro ao atualizar status.', 'error');
+    } finally {
+        setIsProcessing(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -222,7 +284,7 @@ const HospitalizationModule: React.FC = () => {
                         <i className="fas fa-file-medical"></i> Ver Prontuário
                     </button>
                     <button 
-                        onClick={() => addToast('Funcionalidade de atualização de status em desenvolvimento.', 'info')}
+                        onClick={handleOpenStatusModal}
                         className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-2 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs xl:text-sm 2xl:text-base"
                     >
                         <i className="fas fa-edit"></i> Atualizar Status
@@ -352,6 +414,77 @@ const HospitalizationModule: React.FC = () => {
         onSaved={(newPatient) => setPatients(prev => [...prev, newPatient])}
         bays={bays.filter(b => !getPatientInBay(b.id))} // Only free bays
       />
+
+      {/* Status Update Modal */}
+      {isStatusModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Atualizar Paciente</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status Clínico</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'stable', label: 'Estável', color: 'bg-green-100 text-green-700 border-green-200' },
+                    { value: 'recovering', label: 'Recuperação', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+                    { value: 'critical', label: 'Crítico', color: 'bg-red-100 text-red-700 border-red-200' }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setStatusUpdateData({ ...statusUpdateData, status: option.value })}
+                      className={`py-2 px-1 rounded-lg border-2 text-sm font-bold transition-all ${
+                        statusUpdateData.status === option.value
+                          ? `${option.color} ring-2 ring-offset-1 dark:ring-offset-slate-800`
+                          : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Próxima Medicação</label>
+                <input
+                  type="time"
+                  value={statusUpdateData.nextMedication}
+                  onChange={(e) => setStatusUpdateData({ ...statusUpdateData, nextMedication: e.target.value })}
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Notas de Evolução</label>
+                <textarea
+                  value={statusUpdateData.notes}
+                  onChange={(e) => setStatusUpdateData({ ...statusUpdateData, notes: e.target.value })}
+                  placeholder="Observações sobre a evolução do quadro..."
+                  className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setIsStatusModalOpen(false)}
+                  className="flex-1 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleUpdateStatus}
+                  disabled={isProcessing}
+                  className="flex-1 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                >
+                  {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
