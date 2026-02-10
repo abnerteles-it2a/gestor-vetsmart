@@ -10,9 +10,21 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Carrega variáveis de ambiente. .env.local tem precedência sobre .env (se carregado primeiro, pois dotenv não sobrescreve)
+// Carrega variáveis de ambiente. .env.local tem precedência sobre .env
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+// Fallback para quando o servidor roda no diretório onde o .env está (ex: Amplify Compute)
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+console.log('--- Configuração de Ambiente ---');
+console.log('Diretório Atual (__dirname):', __dirname);
+console.log('Arquivo em execução (__filename):', __filename);
+console.log('DATABASE_URL definida?', process.env.DATABASE_URL ? 'SIM' : 'NÃO');
+if (process.env.DATABASE_URL) {
+    const dbUrl = process.env.DATABASE_URL;
+    console.log('DATABASE_URL Host:', dbUrl.split('@')[1]?.split(':')[0] || 'Oculto/Inválido');
+}
+console.log('-------------------------------');
 
 import { VertexAI } from '@google-cloud/vertexai';
 import { Storage } from '@google-cloud/storage';
