@@ -15,35 +15,49 @@ import {
   Cell
 } from 'recharts';
 
-const dataCashFlow = [
-  { name: 'Seg', entradas: 4000, saidas: 2400 },
-  { name: 'Ter', entradas: 3000, saidas: 1398 },
-  { name: 'Qua', entradas: 2000, saidas: 9800 },
-  { name: 'Qui', entradas: 2780, saidas: 3908 },
-  { name: 'Sex', entradas: 1890, saidas: 4800 },
-  { name: 'Sáb', entradas: 2390, saidas: 3800 },
-  { name: 'Dom', entradas: 3490, saidas: 4300 },
-];
-
-const dataDRE = [
-  { name: 'Receita Bruta', value: 150000, color: '#10b981' },
-  { name: 'Custos Variáveis', value: 45000, color: '#f59e0b' },
-  { name: 'Despesas Fixas', value: 30000, color: '#ef4444' },
-  { name: 'Lucro Líquido', value: 75000, color: '#3b82f6' },
-];
-
-const dataCommissions = [
-  { name: 'Dr. Silva', valor: 3500 },
-  { name: 'Dra. Ana', valor: 4200 },
-  { name: 'Dr. Pedro', valor: 2100 },
-];
-
 import { apiService } from '../services/api';
 
 const FinancialModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'cashflow' | 'dre' | 'commissions'>('cashflow');
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const [aiInsights, setAiInsights] = useState<any>(null);
+  
+  // Real Data State
+  const [dataCashFlow, setDataCashFlow] = useState<any[]>([]);
+  const [dataDRE, setDataDRE] = useState<any[]>([]);
+  const [dataCommissions, setDataCommissions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const loadFinancialData = async () => {
+      try {
+        const response = await apiService.getFinancialDashboard();
+        const { cashFlow, dre, commissions } = response.data;
+        
+        // Transform backend keys to match chart expectations if needed
+        // Backend returns "entradas" and "saidas" as strings (decimal), need parsing
+        const formattedCashFlow = cashFlow.map((item: any) => ({
+            name: item.name,
+            entradas: parseFloat(item.entradas),
+            saidas: parseFloat(item.saidas)
+        }));
+
+        const formattedCommissions = commissions.map((item: any) => ({
+            name: item.name,
+            valor: parseFloat(item.valor)
+        }));
+
+        setDataCashFlow(formattedCashFlow);
+        setDataDRE(dre);
+        setDataCommissions(formattedCommissions);
+      } catch (error) {
+        console.error("Error loading financial dashboard", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadFinancialData();
+  }, []);
 
   const handleAiAnalysis = async () => {
     setIsAiAnalyzing(true);

@@ -5,15 +5,6 @@ import { useNavigation } from '../context/NavigationContext';
 import { apiService } from '../services/api';
 import { getFinancialAudit, getHospitalizationRound } from '../services/vertexAiService';
 
-const data = [
-  { name: 'Seg', consultas: 12 },
-  { name: 'Ter', consultas: 19 },
-  { name: 'Qua', consultas: 15 },
-  { name: 'Qui', consultas: 22 },
-  { name: 'Sex', consultas: 30 },
-  { name: 'Sáb', consultas: 10 },
-];
-
 const Dashboard: React.FC = () => {
   const { navigateTo } = useNavigation();
   const [kpis, setKpis] = useState<any[]>([]);
@@ -21,6 +12,7 @@ const Dashboard: React.FC = () => {
   const [hospitalRound, setHospitalRound] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
+  const [weeklyData, setWeeklyData] = useState<any[]>([]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -36,6 +28,30 @@ const Dashboard: React.FC = () => {
         const pets = petsRes.data;
         const sales = salesRes.data;
         const appointments = appointmentsRes.data;
+
+        // Process Weekly Appointments
+        const last7Days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i));
+          return d;
+        });
+
+        const weeklyStats = last7Days.map(date => {
+            const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
+            const count = appointments.filter((a: any) => {
+                const aDate = new Date(a.appointment_date);
+                return aDate.getDate() === date.getDate() && 
+                       aDate.getMonth() === date.getMonth() && 
+                       aDate.getFullYear() === date.getFullYear();
+            }).length;
+            
+            return {
+                name: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+                consultas: count,
+                fullDate: date.toISOString()
+            };
+        });
+        setWeeklyData(weeklyStats);
 
         const today = new Date();
         const yesterday = new Date(today);
@@ -275,39 +291,39 @@ const Dashboard: React.FC = () => {
         {kpis.map((kpi, idx) => (
           <div
             key={idx}
-            className={`bg-white dark:bg-slate-900 p-4 lg:p-5 xl:p-6 2xl:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden`}
+            className={`bg-white dark:bg-slate-900 p-3 lg:p-4 xl:p-5 2xl:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden`}
           >
             <div className={`absolute top-0 left-0 w-1.5 h-full ${kpi.iconClass.replace('bg-', 'bg-').replace('text-', 'bg-').split(' ')[1].replace('text-', 'bg-')}`}></div>
-            <div className="flex items-start justify-between mb-2 lg:mb-3 xl:mb-4 2xl:mb-6 pl-2">
+            <div className="flex items-start justify-between mb-2 lg:mb-2 xl:mb-3 2xl:mb-4 pl-2">
               <div
-                className={`w-10 h-10 lg:w-12 lg:h-12 xl:w-13 xl:h-13 2xl:w-16 2xl:h-16 rounded-2xl flex items-center justify-center text-lg lg:text-xl xl:text-xl 2xl:text-3xl ${kpi.iconClass} shadow-sm group-hover:scale-110 transition-transform duration-300`}
+                className={`w-8 h-8 lg:w-10 lg:h-10 xl:w-11 xl:h-11 2xl:w-14 2xl:h-14 rounded-xl lg:rounded-2xl flex items-center justify-center text-base lg:text-lg xl:text-xl 2xl:text-2xl ${kpi.iconClass} shadow-sm group-hover:scale-110 transition-transform duration-300`}
               >
                 <i className={`fas ${kpi.icon}`}></i>
               </div>
-              <span className="text-[9px] lg:text-[10px] xl:text-[11px] 2xl:text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 px-2 py-1 xl:px-2.5 xl:py-1 2xl:px-3 2xl:py-1.5 rounded-full">
+              <span className="text-[9px] lg:text-[10px] xl:text-[10px] 2xl:text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 px-2 py-1 xl:px-2 xl:py-1 2xl:px-2.5 2xl:py-1.5 rounded-full">
                 {kpi.badge}
               </span>
             </div>
 
-            <div className="space-y-1 xl:space-y-1.5 2xl:space-y-2">
-              <p className="text-[9px] lg:text-[10px] xl:text-[11px] 2xl:text-sm font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+            <div className="space-y-0.5 xl:space-y-1 2xl:space-y-1.5">
+              <p className="text-[9px] lg:text-[10px] xl:text-[10px] 2xl:text-xs font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
                 {kpi.label}
               </p>
               <div className="flex items-end gap-2">
-                <h3 className="text-xl lg:text-2xl xl:text-2xl 2xl:text-4xl font-extrabold text-slate-800 dark:text-slate-100">
+                <h3 className="text-lg lg:text-xl xl:text-xl 2xl:text-3xl font-extrabold text-slate-800 dark:text-slate-100">
                   {kpi.value}
                 </h3>
               </div>
 
-              <div className="flex items-center gap-2 mt-2 xl:mt-2.5 2xl:mt-3">
-                <span className={`text-[10px] lg:text-xs xl:text-xs 2xl:text-sm font-bold px-1.5 py-0.5 xl:px-1.5 xl:py-0.5 2xl:px-2 2xl:py-1 rounded ${kpi.trend === 'down' ? 'bg-red-50 text-red-600 dark:bg-red-900/20' :
+              <div className="flex items-center gap-2 mt-1 xl:mt-1.5 2xl:mt-2">
+                <span className={`text-[9px] lg:text-[10px] xl:text-[10px] 2xl:text-xs font-bold px-1.5 py-0.5 xl:px-1.5 xl:py-0.5 2xl:px-2 2xl:py-1 rounded ${kpi.trend === 'down' ? 'bg-red-50 text-red-600 dark:bg-red-900/20' :
                     kpi.trend === 'neutral' ? 'bg-slate-50 text-slate-600 dark:bg-slate-800' :
                       'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20'
                   }`}>
                   {kpi.delta.includes('+') || kpi.trend === 'up' ? '↗' : kpi.delta.includes('-') ? '↘' : '•'} {kpi.delta}
                 </span>
               </div>
-              <p className="text-[10px] lg:text-xs xl:text-xs 2xl:text-sm text-slate-400 dark:text-slate-500 mt-1 xl:mt-1.5 2xl:mt-2 pl-0.5 truncate">
+              <p className="text-[9px] lg:text-[10px] xl:text-[10px] 2xl:text-xs text-slate-400 dark:text-slate-500 mt-0.5 xl:mt-1 2xl:mt-1.5 pl-0.5 truncate">
                 {kpi.detail}
               </p>
             </div>
@@ -328,7 +344,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="h-56 lg:h-64 xl:h-72 w-full flex items-center justify-center min-h-[14rem] lg:min-h-[16rem]">
               <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-                <BarChart data={data}>
+                <BarChart data={weeklyData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.1} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />

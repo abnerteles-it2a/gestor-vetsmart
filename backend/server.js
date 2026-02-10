@@ -1225,6 +1225,77 @@ app.post('/api/ai/hospitalization-round', authenticateToken, async (req, res) =>
 });
 
 // 5. Financial Insights (Revenue Leakage Detection - "The Auditor")
+app.get('/api/financial/dashboard', authenticateToken, async (req, res) => {
+    try {
+        // 1. Cash Flow (Last 7 Days)
+        // Get sales (revenue) and cost of goods sold (expenses) for the last 7 days
+        const cashFlowRes = await pool.query(`
+            SELECT 
+                TO_CHAR(s.sale_date, 'Dy') as name,
+                SUM(s.total_amount) as entradas,
+                SUM(COALESCE(si.quantity * p.cost_price, 0)) as saidas
+            FROM sales s
+            LEFT JOIN sale_items si ON s.id = si.sale_id
+            LEFT JOIN products p ON si.product_id = p.id
+            WHERE s.sale_date > CURRENT_DATE - INTERVAL '7 days'
+            GROUP BY TO_CHAR(s.sale_date, 'Dy'), DATE(s.sale_date)
+            ORDER BY DATE(s.sale_date) ASC
+        `);
+
+        // If no data, return empty or zeroed structure could be handled by frontend, 
+        // but let's ensure we return at least what we found.
+        
+        // 2. DRE (Simulated for this period)
+        // Total Revenue
+        const revenueRes = await pool.query(`
+            SELECT SUM(total_amount) as total FROM sales WHERE sale_date >= DATE_TRUNC('month', CURRENT_DATE)
+        `);
+        const totalRevenue = parseFloat(revenueRes.rows[0].total || 0);
+        
+        // Total Costs (COGS)
+        const costRes = await pool.query(`
+            SELECT SUM(si.quantity * p.cost_price) as total 
+            FROM sale_items si
+            JOIN sales s ON si.sale_id = s.id
+            JOIN products p ON si.product_id = p.id
+            WHERE s.sale_date >= DATE_TRUNC('month', CURRENT_DATE)
+        `);
+        const totalCosts = parseFloat(costRes.rows[0].total || 0);
+        
+        // Fixed Expenses (Simulated/Placeholder as we don't have an expenses table yet)
+        const fixedExpenses = 15000; // Rent, Energy, Internet, etc.
+        
+        const dre = [
+            { name: 'Receita Bruta', value: totalRevenue, color: '#10b981' },
+            { name: 'Custos Variáveis', value: totalCosts, color: '#f59e0b' },
+            { name: 'Despesas Fixas', value: fixedExpenses, color: '#ef4444' },
+            { name: 'Lucro Líquido', value: totalRevenue - totalCosts - fixedExpenses, color: '#3b82f6' },
+        ];
+
+        // 3. Commissions (By Vet/User)
+        // Assuming 10% commission on services (not products), or just flat 5% on total sales for simplicity
+        const commissionsRes = await pool.query(`
+            SELECT u.name, SUM(s.total_amount) * 0.10 as valor
+            FROM sales s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.sale_date >= DATE_TRUNC('month', CURRENT_DATE)
+            GROUP BY u.name
+            ORDER BY valor DESC
+            LIMIT 5
+        `);
+
+        res.json({
+            cashFlow: cashFlowRes.rows,
+            dre,
+            commissions: commissionsRes.rows
+        });
+
+    } catch (err) {
+        console.error('Erro ao buscar dashboard financeiro:', err);
+        res.status(500).json({ error: 'Erro ao carregar dados financeiros' });
+    }
+});
+
 app.get('/api/ai/financial-insights', authenticateToken, async (req, res) => {
     if (!generativeModel) {
         return res.status(503).json({ error: 'Serviço de IA não disponível.' });

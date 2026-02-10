@@ -148,12 +148,12 @@ const SurgeryModule: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h3 className="text-lg md:text-xl xl:text-2xl font-bold text-slate-800 dark:text-slate-100">Centro Cirúrgico</h3>
-          <p className="text-xs md:text-sm xl:text-base text-slate-600 dark:text-slate-300">Gestão completa de procedimentos, equipe e materiais.</p>
+          <h3 className="text-lg md:text-lg xl:text-xl font-bold text-slate-800 dark:text-slate-100">Centro Cirúrgico</h3>
+          <p className="text-xs md:text-sm xl:text-sm text-slate-600 dark:text-slate-300">Gestão completa de procedimentos, equipe e materiais.</p>
         </div>
         <button 
           onClick={() => setIsNewSurgeryModalOpen(true)}
-          className="bg-red-600 text-white px-4 py-2 xl:px-6 xl:py-3 rounded-xl font-semibold shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 transition-all flex items-center gap-2 text-xs md:text-sm xl:text-base"
+          className="bg-red-600 text-white px-4 py-2 xl:px-5 xl:py-2.5 rounded-xl font-semibold shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 transition-all flex items-center gap-2 text-xs md:text-xs xl:text-sm"
         >
           <i className="fas fa-plus-circle"></i> Agendar Cirurgia
         </button>
@@ -173,7 +173,7 @@ const SurgeryModule: React.FC = () => {
                 <div 
                     key={surgery.id}
                     onClick={() => setSelectedSurgery(surgery)}
-                    className={`p-3 xl:p-4 rounded-xl border cursor-pointer transition-all ${
+                    className={`p-3 xl:p-3.5 rounded-xl border cursor-pointer transition-all ${
                         selectedSurgery?.id === surgery.id
                             ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 ring-1 ring-blue-300 dark:ring-blue-600'
                             : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800'
@@ -187,8 +187,8 @@ const SurgeryModule: React.FC = () => {
                             <i className="fas fa-clock"></i> {surgery.time}
                         </span>
                     </div>
-                    <h5 className="font-bold text-slate-800 dark:text-slate-100 text-sm xl:text-base">{surgery.petName}</h5>
-                    <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 mb-1.5 xl:mb-2">{surgery.procedure}</p>
+                    <h5 className="font-bold text-slate-800 dark:text-slate-100 text-sm xl:text-sm 2xl:text-base">{surgery.petName}</h5>
+                    <p className="text-xs xl:text-xs 2xl:text-sm text-slate-500 dark:text-slate-400 mb-1.5 xl:mb-2">{surgery.procedure}</p>
                     <div className="flex items-center gap-2 text-[10px] xl:text-xs text-slate-600 dark:text-slate-300">
                         <i className="fas fa-user-md"></i> {surgery.vetName.split(' ')[0]}...
                     </div>
@@ -201,11 +201,11 @@ const SurgeryModule: React.FC = () => {
             {selectedSurgery ? (
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden h-full flex flex-col">
                     {/* Header */}
-                    <div className="p-4 xl:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                    <div className="p-4 xl:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                             <div>
-                                <h2 className="text-xl xl:text-2xl 2xl:text-3xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                    {selectedSurgery.petName} <span className="text-sm xl:text-base 2xl:text-lg font-normal text-slate-500 dark:text-slate-400">({selectedSurgery.tutorName})</span>
+                                <h2 className="text-xl xl:text-xl 2xl:text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    {selectedSurgery.petName} <span className="text-sm xl:text-sm 2xl:text-base font-normal text-slate-500 dark:text-slate-400">({selectedSurgery.tutorName})</span>
                                 </h2>
                                 <p className="text-sm xl:text-sm 2xl:text-base font-semibold text-blue-600 dark:text-blue-400 mt-1">{selectedSurgery.procedure}</p>
                                 {selectedSurgery.petId && (
@@ -214,7 +214,7 @@ const SurgeryModule: React.FC = () => {
                                             e.stopPropagation();
                                             navigateTo('patients', { petId: selectedSurgery.petId, subTab: 'history' });
                                         }}
-                                        className="mt-2 xl:mt-3 px-3 py-1.5 xl:px-4 xl:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 rounded-lg text-xs xl:text-sm font-bold hover:bg-blue-50 dark:hover:bg-slate-700 transition-all flex items-center gap-2 shadow-sm"
+                                        className="mt-2 xl:mt-2.5 px-3 py-1.5 xl:px-4 xl:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 rounded-lg text-xs xl:text-xs 2xl:text-sm font-bold hover:bg-blue-50 dark:hover:bg-slate-700 transition-all flex items-center gap-2 shadow-sm"
                                     >
                                         <i className="fas fa-file-medical"></i> Ver Prontuário
                                     </button>
@@ -224,7 +224,7 @@ const SurgeryModule: React.FC = () => {
                                 {selectedSurgery.status === 'agendado' && (
                                     <button 
                                         onClick={() => handleStatusChange(selectedSurgery.id, 'em_andamento')}
-                                        className="px-3 py-1.5 xl:px-4 xl:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs xl:text-sm font-bold flex items-center gap-2"
+                                        className="px-3 py-1.5 xl:px-4 xl:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs xl:text-xs 2xl:text-sm font-bold flex items-center gap-2"
                                     >
                                         <i className="fas fa-play"></i> Iniciar
                                     </button>
@@ -232,7 +232,7 @@ const SurgeryModule: React.FC = () => {
                                 {selectedSurgery.status === 'em_andamento' && (
                                     <button 
                                         onClick={() => handleStatusChange(selectedSurgery.id, 'recuperacao')}
-                                        className="px-3 py-1.5 xl:px-4 xl:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs xl:text-sm font-bold flex items-center gap-2"
+                                        className="px-3 py-1.5 xl:px-4 xl:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs xl:text-xs 2xl:text-sm font-bold flex items-center gap-2"
                                     >
                                         <i className="fas fa-procedures"></i> Pós-Op
                                     </button>
@@ -240,7 +240,7 @@ const SurgeryModule: React.FC = () => {
                                 {selectedSurgery.status === 'recuperacao' && (
                                     <button 
                                         onClick={() => handleStatusChange(selectedSurgery.id, 'concluido')}
-                                        className="px-3 py-1.5 xl:px-4 xl:py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs xl:text-sm font-bold flex items-center gap-2"
+                                        className="px-3 py-1.5 xl:px-4 xl:py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs xl:text-xs 2xl:text-sm font-bold flex items-center gap-2"
                                     >
                                         <i className="fas fa-check"></i> Finalizar
                                     </button>
@@ -250,22 +250,22 @@ const SurgeryModule: React.FC = () => {
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex border-b border-slate-100 dark:border-slate-800 px-4 xl:px-6">
+                    <div className="flex border-b border-slate-100 dark:border-slate-800 px-4 xl:px-5">
                         <button 
                             onClick={() => setActiveTab('checklist')}
-                            className={`px-4 xl:px-6 py-3 xl:py-4 text-xs xl:text-sm font-bold border-b-2 transition-all ${activeTab === 'checklist' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                            className={`px-4 xl:px-6 py-3 xl:py-3.5 text-xs xl:text-sm font-bold border-b-2 transition-all ${activeTab === 'checklist' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
                         >
                             1. Pré-Operatório
                         </button>
                         <button 
                             onClick={() => setActiveTab('intraop')}
-                            className={`px-4 xl:px-6 py-3 xl:py-4 text-xs xl:text-sm font-bold border-b-2 transition-all ${activeTab === 'intraop' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                            className={`px-4 xl:px-6 py-3 xl:py-3.5 text-xs xl:text-sm font-bold border-b-2 transition-all ${activeTab === 'intraop' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
                         >
                             2. Trans-Operatório
                         </button>
                         <button 
                             onClick={() => setActiveTab('postop')}
-                            className={`px-4 xl:px-6 py-3 xl:py-4 text-xs xl:text-sm font-bold border-b-2 transition-all ${activeTab === 'postop' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                            className={`px-4 xl:px-6 py-3 xl:py-3.5 text-xs xl:text-sm font-bold border-b-2 transition-all ${activeTab === 'postop' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
                         >
                             3. Pós-Operatório
                         </button>

@@ -314,9 +314,9 @@ const PatientsModule: React.FC = () => {
 
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden mt-6">
             {/* Header do Pet */}
-            <div className="p-6 xl:p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/30 dark:bg-slate-800/30">
+            <div className="p-4 xl:p-6 2xl:p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/30 dark:bg-slate-800/30">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 xl:w-20 xl:h-20 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-2xl xl:text-3xl shadow-inner overflow-hidden">
+                <div className="w-14 h-14 xl:w-16 xl:h-16 2xl:w-20 2xl:h-20 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-xl xl:text-2xl 2xl:text-3xl shadow-inner overflow-hidden">
                   {selectedPet?.photoUrl ? (
                     <img src={selectedPet.photoUrl} alt={selectedPet.name} className="w-full h-full object-cover" />
                   ) : (
@@ -325,9 +325,9 @@ const PatientsModule: React.FC = () => {
                 </div>
                 <div>
                   <div className="flex items-center gap-3">
-                    <h4 className="text-2xl xl:text-2xl 2xl:text-3xl font-bold text-slate-800 dark:text-slate-100">{selectedPet?.name}</h4>
+                    <h4 className="text-xl xl:text-2xl 2xl:text-3xl font-bold text-slate-800 dark:text-slate-100">{selectedPet?.name}</h4>
                     <span
-                      className={`px-3 py-1 rounded-full text-[11px] xl:text-[11px] 2xl:text-xs font-bold uppercase ${
+                      className={`px-2 py-0.5 xl:px-3 xl:py-1 rounded-full text-[10px] xl:text-xs 2xl:text-sm font-bold uppercase ${
                         selectedPet?.status === 'Ativo'
                           ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300'
                           : 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300'
@@ -336,7 +336,7 @@ const PatientsModule: React.FC = () => {
                       {selectedPet?.status}
                     </span>
                   </div>
-                  <p className="text-sm xl:text-sm 2xl:text-base text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
+                  <p className="text-xs xl:text-sm 2xl:text-base text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
                     <i className="fas fa-paw text-slate-400"></i> {selectedPet?.species} • {selectedPet?.breed} • {selectedPet?.weight} • {selectedPet?.age}
                   </p>
                 </div>
@@ -344,14 +344,14 @@ const PatientsModule: React.FC = () => {
               <div className="flex gap-2">
                 <button 
                   onClick={() => setPetToEdit(selectedPet)}
-                  className="px-4 py-2 xl:px-6 xl:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 font-bold shadow-sm flex items-center gap-2 text-sm xl:text-base"
+                  className="px-3 py-1.5 xl:px-4 xl:py-2 2xl:px-6 2xl:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 font-bold shadow-sm flex items-center gap-2 text-xs xl:text-sm 2xl:text-base"
                 >
                   <i className="fas fa-edit"></i> Editar
                 </button>
                 <button 
                     onClick={() => handleSuggestPlan(selectedPet)}
                     disabled={!!isSuggestingPlan}
-                    className="px-4 py-2 xl:px-6 xl:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 dark:hover:shadow-none transition-all font-bold flex items-center gap-2 text-sm xl:text-base disabled:opacity-70"
+                    className="px-3 py-1.5 xl:px-4 xl:py-2 2xl:px-6 2xl:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 dark:hover:shadow-none transition-all font-bold flex items-center gap-2 text-xs xl:text-sm 2xl:text-base disabled:opacity-70"
                 >
                     {isSuggestingPlan === selectedPet?.id ? (
                         <i className="fas fa-spinner fa-spin"></i>
@@ -365,43 +365,43 @@ const PatientsModule: React.FC = () => {
 
             {/* Stats Bar */}
             <div className="grid grid-cols-2 md:grid-cols-4 border-b border-slate-100 dark:border-slate-800 divide-x divide-slate-100 dark:divide-slate-800">
-              <div className="p-4 xl:p-6 text-center">
-                <p className="text-xs xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Visitas este ano</p>
-                <p className="text-xl xl:text-2xl font-bold text-slate-800 dark:text-slate-100">{selectedPet?.visitsThisYear}</p>
+              <div className="p-3 xl:p-4 2xl:p-6 text-center">
+                <p className="text-[10px] xl:text-xs 2xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Visitas este ano</p>
+                <p className="text-lg xl:text-xl 2xl:text-2xl font-bold text-slate-800 dark:text-slate-100">{selectedPet?.visitsThisYear}</p>
               </div>
-              <div className="p-4 xl:p-6 text-center">
-                <p className="text-xs xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Última Visita</p>
-                <p className="text-xl xl:text-2xl font-bold text-slate-800 dark:text-slate-100">{selectedPet?.lastVisit}</p>
+              <div className="p-3 xl:p-4 2xl:p-6 text-center">
+                <p className="text-[10px] xl:text-xs 2xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Última Visita</p>
+                <p className="text-lg xl:text-xl 2xl:text-2xl font-bold text-slate-800 dark:text-slate-100">{selectedPet?.lastVisit}</p>
               </div>
-              <div className="p-4 xl:p-6 text-center">
-                 <p className="text-xs xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Total Gasto</p>
-                 <p className="text-xl xl:text-2xl font-bold text-emerald-600 dark:text-emerald-400">{selectedPet?.totalSpend}</p>
+              <div className="p-3 xl:p-4 2xl:p-6 text-center">
+                 <p className="text-[10px] xl:text-xs 2xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Total Gasto</p>
+                 <p className="text-lg xl:text-xl 2xl:text-2xl font-bold text-emerald-600 dark:text-emerald-400">{selectedPet?.totalSpend}</p>
               </div>
-              <div className="p-4 xl:p-6 text-center">
-                 <p className="text-xs xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Próximo Agendamento</p>
-                 <p className="text-xl xl:text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <div className="p-3 xl:p-4 2xl:p-6 text-center">
+                 <p className="text-[10px] xl:text-xs 2xl:text-sm text-slate-400 uppercase font-bold tracking-wider mb-1">Próximo Agendamento</p>
+                 <p className="text-lg xl:text-xl 2xl:text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {selectedPet?.nextAppointment ? new Date(selectedPet.nextAppointment).toLocaleDateString('pt-BR') : '-'}
                  </p>
               </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-slate-100 dark:border-slate-800 px-6 xl:px-8">
+            <div className="flex border-b border-slate-100 dark:border-slate-800 px-4 xl:px-6 2xl:px-8">
               <button 
                 onClick={() => setActiveTab('overview')}
-                className={`px-4 xl:px-6 py-4 font-bold border-b-2 transition-colors text-sm xl:text-base ${activeTab === 'overview' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+                className={`px-3 xl:px-5 2xl:px-6 py-3 xl:py-4 font-bold border-b-2 transition-colors text-xs xl:text-sm 2xl:text-base ${activeTab === 'overview' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
               >
                 Visão Geral
               </button>
               <button 
                 onClick={() => setActiveTab('vaccines')}
-                className={`px-4 xl:px-6 py-4 font-bold border-b-2 transition-colors text-sm xl:text-base ${activeTab === 'vaccines' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+                className={`px-3 xl:px-5 2xl:px-6 py-3 xl:py-4 font-bold border-b-2 transition-colors text-xs xl:text-sm 2xl:text-base ${activeTab === 'vaccines' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
               >
                 Vacinas & Parasitologia
               </button>
               <button 
                 onClick={() => setActiveTab('history')}
-                className={`px-4 xl:px-6 py-4 font-bold border-b-2 transition-colors text-sm xl:text-base ${activeTab === 'history' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+                className={`px-3 xl:px-5 2xl:px-6 py-3 xl:py-4 font-bold border-b-2 transition-colors text-xs xl:text-sm 2xl:text-base ${activeTab === 'history' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
               >
                 Histórico Médico
               </button>

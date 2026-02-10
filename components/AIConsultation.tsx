@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { analyzeClinicalCase, analyzeDiagnosticImage } from '../services/vertexAiService';
+import { apiService } from '../services/api';
 
 const AIConsultation: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'scribe' | 'vision'>('scribe');
   const [loading, setLoading] = useState(false);
+
+  // Data State
+  const [pets, setPets] = useState<any[]>([]);
+  const [selectedPetId, setSelectedPetId] = useState<string>('');
 
   // Scribe State
   const [rawNotes, setRawNotes] = useState('');
@@ -14,15 +19,27 @@ const AIConsultation: React.FC = () => {
   const [imageDesc, setImageDesc] = useState('');
   const [visionResult, setVisionResult] = useState<any>(null);
 
+  useEffect(() => {
+    // Load pets for selection
+    apiService.getPets().then(res => setPets(res.data)).catch(console.error);
+  }, []);
+
   const handleScribeAnalysis = async () => {
     if (!rawNotes) return;
     setLoading(true);
     try {
-      // Mock Pet/History for demo
+      const selectedPet = pets.find(p => p.id.toString() === selectedPetId);
+      const petDetails = selectedPet ? {
+          species: selectedPet.species,
+          breed: selectedPet.breed,
+          age: selectedPet.age, // Assuming age is a string like "5 anos" or number
+          name: selectedPet.name
+      } : { species: 'Canino', breed: 'SRD', age: 0, name: 'Paciente Não Identificado' };
+
       const result = await analyzeClinicalCase(
         rawNotes, 
-        { species: 'Canino', breed: 'Golden Retriever', age: 5, name: 'Thor' },
-        'Histórico de ingestão de corpos estranhos.'
+        petDetails,
+        'Histórico obtido do prontuário digital.'
       );
       setClinicalResult(result);
     } catch (e) {

@@ -296,8 +296,8 @@ const ClinicalModule: React.FC = () => {
         {/* Patient Header */}
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/30 dark:bg-slate-800/20">
             <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 xl:w-20 xl:h-20 ${selectedPatient.species === PetSpecies.CAT ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'} rounded-2xl flex items-center justify-center shadow-sm transition-all`}>
-                    <i className={`fas ${selectedPatient.species === PetSpecies.CAT ? 'fa-cat' : 'fa-dog'} text-3xl xl:text-4xl`}></i>
+                <div className={`w-16 h-16 xl:w-16 xl:h-16 2xl:w-20 2xl:h-20 ${selectedPatient.species === PetSpecies.CAT ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'} rounded-2xl flex items-center justify-center shadow-sm transition-all`}>
+                    <i className={`fas ${selectedPatient.species === PetSpecies.CAT ? 'fa-cat' : 'fa-dog'} text-3xl xl:text-3xl 2xl:text-4xl`}></i>
                 </div>
                 <div>
                     <h2 className="text-2xl xl:text-2xl 2xl:text-3xl font-bold text-slate-800 dark:text-slate-100 transition-all">{selectedPatient.name}</h2>
@@ -315,14 +315,14 @@ const ClinicalModule: React.FC = () => {
             <div className="flex gap-3 w-full md:w-auto">
                 <button 
                     onClick={() => navigateTo('patients', { petId: selectedPatient.id, subTab: 'history' })}
-                    className="flex-1 md:flex-none px-4 py-2 xl:px-6 xl:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm xl:text-base font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm flex items-center justify-center gap-2"
+                    className="flex-1 md:flex-none px-4 py-2 xl:px-5 xl:py-2.5 2xl:px-6 2xl:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm xl:text-sm 2xl:text-base font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm flex items-center justify-center gap-2"
                 >
                     <i className="fas fa-file-medical text-blue-500"></i> Ver Prontuário
                 </button>
                 <button 
                     onClick={handleGenerateAI}
                     disabled={isProcessing}
-                    className="flex-1 md:flex-none px-4 py-2 xl:px-6 xl:py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl text-sm xl:text-base font-bold shadow-lg shadow-purple-200 hover:shadow-purple-300 hover:scale-105 transition-all flex items-center justify-center gap-2"
+                    className="flex-1 md:flex-none px-4 py-2 xl:px-5 xl:py-2.5 2xl:px-6 2xl:py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl text-sm xl:text-sm 2xl:text-base font-bold shadow-lg shadow-purple-200 hover:shadow-purple-300 hover:scale-105 transition-all flex items-center justify-center gap-2"
                 >
                     <i className={`fas ${isProcessing ? 'fa-spinner fa-spin' : 'fa-robot'}`}></i> 
                     {isProcessing ? 'Analisando...' : 'IA Assistente'}

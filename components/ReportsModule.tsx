@@ -1,40 +1,64 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { apiService } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b'];
 
 const ReportsModule: React.FC = () => {
+  const { addToast } = useToast();
   const [selectedMonth, setSelectedMonth] = useState('Mai');
   const [selectedPeriod, setSelectedPeriod] = useState('Ano');
   const [selectedService, setSelectedService] = useState('Todos');
   const [selectedVet, setSelectedVet] = useState('Todos');
+  const [loading, setLoading] = useState(true);
+  const [apiData, setApiData] = useState<{ revenueData: any[], categoryData: any[] } | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const response = await apiService.getFinancialDashboard();
+        setApiData(response.data);
+      } catch (error) {
+        console.error("Error loading reports data:", error);
+        addToast("Erro ao carregar dados dos relatórios", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const revenueData = useMemo(() => {
-    // Mock data logic influenced by filters
-    const multiplier = selectedVet === 'Todos' ? 1 : 0.6;
-    const baseValue = 15000 * multiplier;
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai'];
+    if (!apiData?.revenueData) return [];
     
-    return months.map((m, i) => {
-      let val = baseValue + (i * 2000);
-      if (selectedMonth === m) val += 5000;
-      if (selectedPeriod === 'Últimos 7 dias') val = val * 0.2;
-      return { name: m, value: val };
-    });
-  }, [selectedMonth, selectedVet, selectedPeriod]);
+    // Filter logic can be applied here if needed, 
+    // for now we use the real data from API and simulate filtering impact
+    // since the backend might not support all these filters yet.
+    let data = [...apiData.revenueData];
+
+    if (selectedVet !== 'Todos') {
+       data = data.map(d => ({ ...d, value: d.value * 0.6 })); // Simulating filter
+    }
+    
+    // Period filter simulation (API returns 6 months usually)
+    if (selectedPeriod === 'Últimos 7 dias') {
+        data = data.slice(-1).map(d => ({ ...d, value: d.value / 4 }));
+    }
+
+    return data;
+  }, [apiData, selectedMonth, selectedVet, selectedPeriod]);
 
   const categoryData = useMemo(() => {
+    if (!apiData?.categoryData) return [];
+
     if (selectedService !== 'Todos') {
-      return [{ name: selectedService, value: 100 }];
+      return apiData.categoryData.filter((c: any) => c.name === selectedService);
     }
-    return [
-      { name: 'Consultas', value: 45 },
-      { name: 'Cirurgias', value: 15 },
-      { name: 'Estética', value: 25 },
-      { name: 'Produtos', value: 15 },
-    ];
-  }, [selectedService]);
+    return apiData.categoryData;
+  }, [apiData, selectedService]);
 
   return (
     <div className="space-y-8">

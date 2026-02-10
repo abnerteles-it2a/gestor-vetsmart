@@ -15,20 +15,20 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in duration-200 border border-slate-100 dark:border-slate-800">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900">
-          <h3 className="font-bold text-slate-800 dark:text-slate-100">{title}</h3>
-          <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg xl:max-w-2xl overflow-hidden animate-in zoom-in duration-200 border border-slate-100 dark:border-slate-800">
+        <div className="px-6 py-4 xl:px-8 xl:py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900">
+          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg xl:text-2xl">{title}</h3>
+          <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xl xl:text-2xl">
             <i className="fas fa-times"></i>
           </button>
         </div>
         <form onSubmit={(e) => { e.preventDefault(); onSubmit({}); }}>
-          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <div className="p-6 xl:p-8 space-y-4 xl:space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
             {children}
           </div>
-          <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 bg-slate-50/50 dark:bg-slate-900">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">Cancelar</button>
-            <button type="submit" className="px-6 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 dark:shadow-blue-900/30 transition-all">Salvar Registro</button>
+          <div className="px-6 py-4 xl:px-8 xl:py-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 bg-slate-50/50 dark:bg-slate-900">
+            <button type="button" onClick={onClose} className="px-4 py-2 xl:px-6 xl:py-3 text-sm xl:text-base font-semibold text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">Cancelar</button>
+            <button type="submit" className="px-6 py-2 xl:px-8 xl:py-3 text-sm xl:text-base font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 dark:shadow-blue-900/30 transition-all">Salvar Registro</button>
           </div>
         </form>
       </div>
@@ -104,28 +104,28 @@ export const NewTutorModal: React.FC<NewTutorModalProps> = ({ isOpen, onClose, o
           </div>
         )}
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome Completo</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome Completo</label>
           <input
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ex: João Silva"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Telefone</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Telefone</label>
           <input
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="(00) 00000-0000"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Email</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Email</label>
           <input
             type="email"
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="exemplo@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -313,18 +313,18 @@ export const NewPetModal: React.FC<NewPetModalProps> = ({ isOpen, onClose, onSav
         </div>
 
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome do Pet</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome do Pet</label>
           <input
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ex: Tobias"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Espécie</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Espécie</label>
           <select
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={species}
             onChange={(e) => setSpecies(e.target.value)}
           >
@@ -337,38 +337,38 @@ export const NewPetModal: React.FC<NewPetModalProps> = ({ isOpen, onClose, onSav
           </select>
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Raça</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Raça</label>
           <input
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ex: Poodle"
             value={breed}
             onChange={(e) => setBreed(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Data de Nascimento</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Data de Nascimento</label>
           <input
             type="date"
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={birthDate}
             onChange={(e) => setBirthDate(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Peso (kg)</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Peso (kg)</label>
           <input
             type="number"
             step="0.1"
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="0.0"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
           />
         </div>
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Alergias</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Alergias</label>
           <textarea
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             rows={3}
             placeholder="Descreva alergias conhecidas (opcional)"
             value={allergies}
@@ -376,10 +376,10 @@ export const NewPetModal: React.FC<NewPetModalProps> = ({ isOpen, onClose, onSav
           />
         </div>
         <div className="col-span-2">
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Tutor</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Tutor</label>
           <div className="flex gap-2">
             <select
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               value={tutor}
               onChange={(e) => setTutor(e.target.value)}
             >
@@ -490,9 +490,9 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
         )}
         
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Paciente</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 uppercase mb-1">Paciente</label>
           <select
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
           >
@@ -504,9 +504,9 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Motivo da Internação</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 uppercase mb-1">Motivo da Internação</label>
           <input
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ex: Pós-operatório, Desidratação..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -515,9 +515,9 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Baia / Leito</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 uppercase mb-1">Baia / Leito</label>
             <select
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
               value={bayId}
               onChange={(e) => setBayId(e.target.value)}
             >
@@ -529,9 +529,9 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status Inicial</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 uppercase mb-1">Status Inicial</label>
             <select
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             >
@@ -543,10 +543,10 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Próxima Medicação</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 uppercase mb-1">Próxima Medicação</label>
           <input
             type="time"
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
             value={nextMedication}
             onChange={(e) => setNextMedication(e.target.value)}
           />
@@ -663,28 +663,28 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen
         )}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Data</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Data</label>
             <input
               type="date"
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Horário</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Horário</label>
             <input
               type="time"
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               value={time}
               onChange={(e) => setTime(e.target.value)}
             />
           </div>
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Pet / Paciente</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Pet / Paciente</label>
           <select
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={pet}
             onChange={(e) => setPet(e.target.value)}
           >
@@ -695,9 +695,9 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen
           </select>
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Veterinário</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Veterinário</label>
           <select
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={vet}
             onChange={(e) => setVet(e.target.value)}
           >
@@ -708,9 +708,9 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen
           </select>
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Serviço</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Serviço</label>
           <select
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={service}
             onChange={(e) => setService(e.target.value)}
           >
@@ -723,9 +723,9 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen
           </select>
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Observações</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Observações</label>
           <textarea
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             rows={3}
             placeholder="Informações adicionais relevantes"
             value={notes}
@@ -830,9 +830,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
           </div>
         )}
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Cliente / Tutor</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Cliente / Tutor</label>
            <select
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={customer}
             onChange={(e) => setCustomer(e.target.value)}
           >
@@ -844,9 +844,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
           </select>
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Pet (Opcional)</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Pet (Opcional)</label>
           <select
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={petId}
             onChange={(e) => setPetId(e.target.value)}
           >
@@ -860,9 +860,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
           </select>
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Tipo de Serviço</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Tipo de Serviço</label>
           <select
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             value={serviceType}
             onChange={(e) => setServiceType(e.target.value)}
           >
@@ -875,20 +875,20 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Valor (R$)</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Valor (R$)</label>
             <input
               type="number"
               step="0.01"
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0,00"
               value={value}
               onChange={(e) => setValue(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Forma de Pagamento</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Forma de Pagamento</label>
             <select
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
             >
@@ -901,7 +901,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
           </div>
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Status</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Status</label>
           <div className="flex gap-4 text-xs">
             <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
               <input
@@ -924,9 +924,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
           </div>
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Descrição</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Descrição</label>
           <textarea
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             rows={3}
             placeholder="Ex: Consulta + Vacina V10"
             value={description}
@@ -1030,9 +1030,9 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
           </div>
         )}
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome do Produto</label>
+          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome do Produto</label>
           <input
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ex: Vacina V10"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -1040,9 +1040,9 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Categoria</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Categoria</label>
             <select
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
@@ -1055,11 +1055,11 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Preço Unitário (R$)</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Preço Unitário (R$)</label>
             <input
               type="number"
               step="0.01"
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0,00"
               value={unitPrice}
               onChange={(e) => setUnitPrice(e.target.value)}
@@ -1068,19 +1068,19 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Quantidade</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Quantidade</label>
             <input
               type="number"
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Fornecedor</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Fornecedor</label>
             <input
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Nome do fornecedor"
               value={supplier}
               onChange={(e) => setSupplier(e.target.value)}
@@ -1089,18 +1089,18 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Data de Validade</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Data de Validade</label>
             <input
               type="date"
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               value={expirationDate}
               onChange={(e) => setExpirationDate(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">SKU / Código</label>
+            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">SKU / Código</label>
             <input
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Opcional"
               value={sku}
               onChange={(e) => setSku(e.target.value)}

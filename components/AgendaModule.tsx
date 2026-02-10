@@ -158,7 +158,7 @@ const AgendaModule: React.FC = () => {
                                     navigateTo('clinical');
                                 }
                             }}
-                            className="opacity-100 xl:opacity-0 xl:group-hover:opacity-100 transition-opacity bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 p-2 rounded-lg flex items-center gap-2"
+                            className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 p-2 rounded-lg flex items-center gap-2"
                             title="Ver Prontuário"
                         >
                             <i className="fas fa-file-medical"></i>

@@ -11,6 +11,7 @@ const TelemedicineModule: React.FC = () => {
   const [isCallActive, setIsCallActive] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
+  const [stats, setStats] = useState({ today: 0, completed: 0, avgTime: '15 min' });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -20,26 +21,25 @@ const TelemedicineModule: React.FC = () => {
         const data = response.data;
         
         // Filter for today's appointments that are consultations or returns
-        // In a real app, we might have a specific flag for 'telemedicine'
-        // For now, we'll assume all consultations/returns could be handled here
         const today = new Date().toISOString().split('T')[0];
         
-        const mapped = data
-          .filter((a: any) => 
+        const todayAppointments = data.filter((a: any) => 
             (a.type === 'consulta' || a.type === 'retorno') && 
             a.status !== 'cancelado' &&
             a.appointment_date && a.appointment_date.startsWith(today)
-          )
-          .map((a: any) => {
+        );
+
+        const completedCount = data.filter((a: any) => a.status === 'atendido').length;
+
+        const mapped = todayAppointments.map((a: any) => {
             const dateObj = new Date(a.appointment_date);
             const time = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            const dateLabel = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
             
             return {
               id: a.id,
               petId: a.pet_id,
-              patientName: a.pet_name,
-              tutorName: a.tutor_name,
+              patientName: a.pet_name || 'Paciente',
+              tutorName: a.tutor_name || 'Tutor',
               time: time,
               date: 'Hoje',
               status: a.status === 'agendado' ? 'pending' : 'confirmed',
@@ -48,12 +48,17 @@ const TelemedicineModule: React.FC = () => {
                 ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150&h=150'
                 : 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=150&h=150',
               symptoms: a.reason || 'Não informado',
-              roomName: `vetsmart-${a.pet_name?.toLowerCase().replace(/\s+/g, '-')}-${a.id}`,
-              tutorPhone: a.tutor_phone || '' // Real phone from database
+              roomName: `vetsmart-${(a.pet_name || 'pet').toLowerCase().replace(/\s+/g, '-')}-${a.id}`,
+              tutorPhone: a.tutor_phone || ''
             };
           });
           
         setAppointments(mapped);
+        setStats({
+            today: todayAppointments.length,
+            completed: completedCount,
+            avgTime: '20 min' // Estimated average
+        });
       } catch (error) {
         console.error("Error loading telemedicine appointments", error);
       } finally {
@@ -132,7 +137,7 @@ const TelemedicineModule: React.FC = () => {
             </div>
             <div>
               <p className="text-sm xl:text-base text-slate-500 dark:text-slate-400">Agendadas Hoje</p>
-              <h3 className="text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">{appointments.length}</h3>
+              <h3 className="text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">{stats.today}</h3>
             </div>
           </div>
         </div>
@@ -143,7 +148,7 @@ const TelemedicineModule: React.FC = () => {
             </div>
             <div>
               <p className="text-sm xl:text-base text-slate-500 dark:text-slate-400">Realizadas</p>
-              <h3 className="text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">128</h3>
+              <h3 className="text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">{stats.completed}</h3>
             </div>
           </div>
         </div>
@@ -154,7 +159,7 @@ const TelemedicineModule: React.FC = () => {
             </div>
             <div>
               <p className="text-sm xl:text-base text-slate-500 dark:text-slate-400">Tempo Médio</p>
-              <h3 className="text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">18 min</h3>
+              <h3 className="text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">{stats.avgTime}</h3>
             </div>
           </div>
         </div>
@@ -170,8 +175,7 @@ const TelemedicineModule: React.FC = () => {
                 <i className="fas fa-calendar-check text-4xl text-slate-300 mb-3"></i>
                 <p className="text-slate-500">Nenhuma teleconsulta agendada para hoje.</p>
              </div>
-          ) : (
-          appointments.map((apt) => (
+          ) : appointments.map((apt) => (
             <div key={apt.id} className="bg-white dark:bg-slate-800 p-4 xl:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">

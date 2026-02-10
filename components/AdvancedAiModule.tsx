@@ -42,11 +42,23 @@ const AdvancedAiModule: React.FC = () => {
     if (!rawNotes) return;
     setLoading(true);
     try {
-      // Mock Pet/History for demo
+      const selectedPet = pets.find(p => p.id.toString() === selectedPetId.toString());
+      const petDetails = selectedPet ? {
+        species: selectedPet.species,
+        breed: selectedPet.breed,
+        age: selectedPet.age, // Assuming age is available or calculated
+        name: selectedPet.name
+      } : { species: 'Desconhecido', breed: 'Desconhecido', age: 0, name: 'Desconhecido' };
+
+      // Simple history summary from loaded history
+      const historySummary = history.length > 0 
+        ? `Histórico recente: ${history.slice(0, 3).map(h => h.diagnosis).join(', ')}`
+        : 'Sem histórico recente.';
+
       const result = await analyzeClinicalCase(
         rawNotes, 
-        { species: 'Canino', breed: 'Golden Retriever', age: 5, name: 'Thor' },
-        'Histórico de ingestão de corpos estranhos.'
+        petDetails,
+        historySummary
       );
       setClinicalResult(result);
     } catch (e) {

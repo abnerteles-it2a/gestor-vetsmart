@@ -74,6 +74,7 @@ export const apiService = {
 
   // Dashboard
   getDashboardKPIs: () => api.get('/dashboard/kpis'),
+  getFinancialDashboard: () => api.get('/financial/dashboard'),
 
   // Hospitalization
   getHospitalizations: () => api.get('/hospitalization'),
