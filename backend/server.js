@@ -48,22 +48,54 @@ try {
     // Handle Google Credentials from JSON string in environment variable
     if (process.env.GOOGLE_CREDENTIALS_JSON) {
         let credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON.trim();
-        // Remove potential backticks wrapping the JSON (common in some env setups)
+        console.log(`🔑 Recebida GOOGLE_CREDENTIALS_JSON com ${credentialsJson.length} caracteres.`);
+        
+        // Remove wrapping backticks if present
         if (credentialsJson.startsWith('`')) {
             if (credentialsJson.endsWith('`')) {
                 credentialsJson = credentialsJson.slice(1, -1);
             } else {
-                // Handle case where trailing backtick might be missing or separated
                 credentialsJson = credentialsJson.substring(1);
             }
         }
+        
+        // Validação básica antes de tentar parsear
+        if (!credentialsJson.startsWith('{') || !credentialsJson.endsWith('}')) {
+             console.error('❌ ERRO CRÍTICO: GOOGLE_CREDENTIALS_JSON parece estar truncada ou mal formatada (não começa/termina com chaves).');
+             console.error(`   Início: ${credentialsJson.substring(0, 10)}...`);
+             console.error(`   Fim: ...${credentialsJson.substring(credentialsJson.length - 10)}`);
+        }
 
-        // Na Vercel, apenas /tmp é gravável
-        const tmpDir = os.tmpdir();
-        const credentialsPath = path.join(tmpDir, 'google-credentials.json');
-        fs.writeFileSync(credentialsPath, credentialsJson);
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
-        console.log(`🔑 Credenciais do Google Cloud configuradas em ${credentialsPath}`);
+        try {
+            const credentials = JSON.parse(credentialsJson);
+
+            // SANITIZAÇÃO DE CREDENCIAIS
+            // Remove backticks internos que podem vir de copy-paste (ex: "auth_uri": " `https://...` ")
+            const fieldsToSanitize = ['auth_uri', 'token_uri', 'auth_provider_x509_cert_url', 'client_x509_cert_url'];
+            fieldsToSanitize.forEach(field => {
+                if (credentials[field] && typeof credentials[field] === 'string') {
+                     if (credentials[field].includes('`') || credentials[field].trim() !== credentials[field]) {
+                         console.warn(`⚠️ Aviso: Limpando caracteres inválidos detectados em '${field}' das credenciais.`);
+                         credentials[field] = credentials[field].replace(/`/g, '').trim();
+                     }
+                }
+            });
+
+            // Na Vercel, apenas /tmp é gravável
+            const tmpDir = os.tmpdir();
+            const credentialsPath = path.join(tmpDir, 'google-credentials.json');
+            fs.writeFileSync(credentialsPath, JSON.stringify(credentials)); // Escreve o objeto sanitizado
+            process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+            console.log(`🔑 Credenciais do Google Cloud sanitizadas e configuradas em ${credentialsPath}`);
+
+        } catch (parseError) {
+             console.error('❌ ERRO CRÍTICO ao parsear JSON das credenciais:', parseError.message);
+             // Fallback: Tenta escrever o JSON original mesmo assim, caso o erro seja irrelevante
+             const tmpDir = os.tmpdir();
+             const credentialsPath = path.join(tmpDir, 'google-credentials.json');
+             fs.writeFileSync(credentialsPath, credentialsJson);
+             process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+        }
     }
 
     // Configuração usando credenciais do ambiente ou ADC (Application Default Credentials)
@@ -967,6 +999,7 @@ app.post('/api/ai/suggest-treatment', authenticateToken, async (req, res) => {
     `;
 
     try {
+        console.time('VertexAI-SuggestTreatment'); // Início da medição de tempo
         const request = {
             contents: [{
                 role: 'user',
@@ -983,6 +1016,8 @@ app.post('/api/ai/suggest-treatment', authenticateToken, async (req, res) => {
         const result = await model.generateContent(request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
+        
+        console.timeEnd('VertexAI-SuggestTreatment'); // Fim da medição de tempo
 
         // Tenta extrair JSON se o modelo retornar markdown
         const jsonResponse = parseAIJSON(text) || { raw_text: text };
@@ -1053,10 +1088,12 @@ app.get('/api/ai/inventory-forecast', authenticateToken, async (req, res) => {
                 "waste_alert": "Algum item com estoque muito alto e pouca saída?"
             }
         `;
-
+        
+        console.time('VertexAI-InventoryForecast');
         const result = await generativeModel.generateContent(prompt);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
+        console.timeEnd('VertexAI-InventoryForecast');
 
         const jsonResponse = parseAIJSON(text) || { analysis_summary: 'Erro ao processar IA (Formato inválido)' };
 
@@ -1078,6 +1115,7 @@ app.get('/api/ai/smart-campaigns', authenticateToken, async (req, res) => {
     const { userInstruction } = req.query;
 
     try {
+        console.time('VertexAI-SmartCampaigns'); // Start Timer
         // Busca pets que não visitam a clínica há mais de 6 meses (Risco de Churn)
         // E cruza com a idade para campanhas específicas (ex: Geriatria)
         // TODO: In a real scenario, this query should be dynamic based on the user instruction if possible
@@ -1158,9 +1196,12 @@ app.get('/api/ai/smart-campaigns', authenticateToken, async (req, res) => {
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: 'application/json' }
         };
+        
+        console.time('VertexAI-SmartCampaigns');
         const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
+        console.timeEnd('VertexAI-SmartCampaigns');
 
         const jsonResponse = parseAIJSON(text) || { campaign_name: 'Erro ao gerar campanha', target_segments: [] };
 
@@ -1215,9 +1256,12 @@ app.post('/api/ai/hospitalization-round', authenticateToken, async (req, res) =>
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: 'application/json' }
         };
+        
+        console.time('VertexAI-Round');
         const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
+        console.timeEnd('VertexAI-Round');
 
         const jsonResponse = parseAIJSON(text) || {
             summary: 'Erro na análise (Formato inválido ou resposta vazia)',
@@ -1365,9 +1409,12 @@ app.get('/api/ai/financial-insights', authenticateToken, async (req, res) => {
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: 'application/json' }
         };
+        
+        console.time('VertexAI-FinancialInsights');
         const result = await generateContentWithRetry(generativeModel, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
+        console.timeEnd('VertexAI-FinancialInsights');
 
         const jsonResponse = parseAIJSON(text) || { insights: ['Sem dados suficientes ou erro de formato'] };
 
@@ -1435,9 +1482,12 @@ app.post('/api/ai/structure-clinical-notes', authenticateToken, async (req, res)
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: { responseMimeType: 'application/json' }
         };
+        
+        console.time('VertexAI-ClinicalNotes');
         const result = await generateContentWithRetry(modelToUse, request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
+        console.timeEnd('VertexAI-ClinicalNotes');
 
         const jsonResponse = parseAIJSON(text) || {
             diagnosis: "Não foi possível gerar o diagnóstico (Erro de formato)",

@@ -4,6 +4,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api'; // O proxy do Vite redir
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 60000, // 60 segundos de timeout para chamadas de IA (Cold Starts)
   headers: {
     'Content-Type': 'application/json',
   },
