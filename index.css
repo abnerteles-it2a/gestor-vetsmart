@@ -1,21 +1,58 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
-@variant dark (&:where(.dark, .dark *));
+@theme {
+  /* Corporate Blue (Overrides Indigo to feel sober and reliable) */
+  --color-indigo-50: #f4f6f8;
+  --color-indigo-100: #e4e9f0;
+  --color-indigo-200: #c9d4e2;
+  --color-indigo-300: #9eafc5;
+  --color-indigo-400: #6f86a3;
+  --color-indigo-500: #4f6484;
+  --color-indigo-600: #3b4e6d;
+  --color-indigo-700: #30405c;
+  --color-indigo-800: #29354d;
+  --color-indigo-900: #242d41;
+  --color-indigo-950: #1a2232;
 
-:root {
+  /* Enterprise High-Contrast Basis */
+  --color-white: #ffffff;
+
+  /* Clean Fintech Backdrop (Matte Slate for deeper contrast) */
+  --color-slate-50: #f1f5f9;  /* Muted background */
+  --color-slate-100: #e2e8f0; /* Muted borders */
+  --color-slate-200: #cbd5e1; 
+
+  /* Crisp Shadows for the "Portal" feel (Larger, more subtle) */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.04), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 10px 15px -3px rgba(15, 23, 42, 0.06), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 10px 10px -5px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 25px 50px -12px rgba(15, 23, 42, 0.12);
+}
+
+/* Fluid typography: High-density Executive Scale */
+html {
+  font-size: clamp(12.5px, 0.45vw + 8.5px, 15px);
+  scrollbar-gutter: stable;
   font-family: 'Inter', sans-serif;
-  font-size: 14px; /* Base size for laptops/notebooks (compact) */
 }
 
-@media (min-width: 1280px) { /* XL screens */
-  :root {
-    font-size: 15px;
+@layer components {
+  .text-display-lg {
+    @apply text-lg md:text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight;
   }
-}
-
-@media (min-width: 1536px) { /* 2XL screens (Ultra Wide) */
-  :root {
-    font-size: 16px;
+  .text-display-sm {
+    @apply text-sm md:text-base font-bold tracking-tight text-slate-800 dark:text-slate-100 leading-snug;
+  }
+  .text-label-caps {
+    @apply text-[9px] md:text-[10px] font-black uppercase tracking-[0.1em] text-slate-500/80 dark:text-slate-400/80;
+  }
+  .text-data-primary {
+    @apply tabular-nums font-semibold tracking-tight text-slate-900 dark:text-white;
+  }
+  .text-body-secondary {
+    @apply text-xs md:text-sm text-slate-500 dark:text-slate-400 leading-relaxed;
   }
 }
 
@@ -23,6 +60,25 @@ body {
   @apply bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100;
 }
 
-.glass-effect {
-  @apply bg-white/80 backdrop-blur-md;
+@layer utilities {
+  .bg-mesh-grid {
+    background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
+    background-size: 24px 24px;
+  }
+  .dark .bg-mesh-grid {
+    background-image: radial-gradient(#1e293b 0.5px, transparent 0.5px);
+  }
+  .transition-glass {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+@media print {
+  .no-print { display: none !important; }
 }

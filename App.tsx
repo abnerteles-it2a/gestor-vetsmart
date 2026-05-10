@@ -24,6 +24,17 @@ import Login from './components/Login';
 const MainLayout: React.FC = () => {
   const { user, logout, isLoading } = useAuth();
   const { activeTab, setActiveTab, navigateTo } = useNavigation();
+  
+  // HOOKS MUST BE AT THE TOP LEVEL
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      if (typeof window === 'undefined') return false;
+      return window.localStorage.getItem('gestor_vetsmart_sidebar_collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === 'undefined') return false;
     const stored = window.localStorage.getItem('theme');
@@ -32,6 +43,12 @@ const MainLayout: React.FC = () => {
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return true;
     return false;
   });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('gestor_vetsmart_sidebar_collapsed', sidebarCollapsed ? '1' : '0');
+    } catch {}
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -44,6 +61,7 @@ const MainLayout: React.FC = () => {
     }
   }, [isDarkMode]);
 
+  // EARLY RETURNS AFTER HOOKS
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-500">
@@ -101,55 +119,60 @@ const MainLayout: React.FC = () => {
   }
 
   return (
-      <div className="flex min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="min-h-screen bg-[#020617] flex justify-center">
+      {/* Main App Container - Limited to 1920px (Full HD) */}
+      <div className="w-full max-w-[1920px] bg-[#020617] min-h-screen relative flex">
+        
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          collapsed={sidebarCollapsed}
+          setCollapsed={setSidebarCollapsed}
+        />
 
-        <div className="flex-1 flex flex-col">
-          <header className="h-16 border-b bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
-            <div className="flex flex-col">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-none">
-                {getTitle()}
-              </h2>
-              <p className="text-[10px] text-slate-400 font-medium uppercase mt-1">
-                Gestor VetPro - Gestão veterinária inteligente com IA
+        {/* Right column: The PORTAL — rounded container that creates the premium frame */}
+        <div className="flex-1 flex flex-col min-w-0 bg-[#020617]">
+          <div className="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 rounded-tl-[2.5rem] lg:rounded-tl-[3.5rem] shadow-2xl shadow-indigo-950/20 overflow-hidden bg-mesh-grid transition-colors duration-500">
+            <header className="h-16 border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
+              <div className="flex flex-col">
+                <h2 className="text-[15px] font-bold text-slate-800 dark:text-slate-100 leading-none tracking-tight">
+                  {getTitle()}
+                </h2>
+                <p className="text-[9px] text-slate-400 font-black uppercase mt-1 tracking-wider">
+                  Gestor Vetsmart • it2a Enterprise Ecosystem
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setIsDarkMode((prev) => !prev)}
+                  className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-glass"
+                  aria-label="Alternar modo escuro"
+                >
+                  <i className={`fas ${isDarkMode ? 'fa-moon' : 'fa-sun'} text-xs`}></i>
+                </button>
+                <div className="text-right hidden sm:block">
+                  <p className="text-[13px] font-bold text-slate-700 dark:text-slate-200">{user.name}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{user.role}</p>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold border border-white dark:border-slate-700 shadow-sm text-sm">
+                  {user.avatar || user.name.substring(0,2).toUpperCase()}
+                </div>
+              </div>
+            </header>
+
+            <main className="flex-1 p-4 md:p-8 animate-fade-in overflow-y-auto">
+              {renderContent()}
+            </main>
+            
+            <footer className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-t border-slate-200 dark:border-slate-800 p-4 text-center">
+              <p className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em]">
+                it2a Enterprise Ecosystem © 2026 • Gestor Vetsmart
               </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsDarkMode((prev) => !prev)}
-                className="w-9 h-9 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                aria-label="Alternar modo escuro"
-              >
-                <i className={`fas ${isDarkMode ? 'fa-moon' : 'fa-sun'}`}></i>
-              </button>
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{user.role}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-300 font-bold border-2 border-white dark:border-slate-700 shadow-sm">
-                {user.avatar || user.name.substring(0,2).toUpperCase()}
-              </div>
-              <button 
-                onClick={logout}
-                className="ml-2 text-slate-400 hover:text-red-500 transition-colors"
-                title="Sair do sistema"
-              >
-                <i className="fas fa-sign-out-alt"></i>
-              </button>
-            </div>
-          </header>
-
-          <main className="flex-1 p-4 md:p-8">
-            {renderContent()}
-          </main>
-          
-          <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-4 text-center">
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium uppercase tracking-[0.16em]">
-              Gestor VetPro © 2026
-            </p>
-          </footer>
+            </footer>
+          </div>
         </div>
       </div>
+    </div>
   );
 };
 

@@ -10,6 +10,7 @@ const Login: React.FC = () => {
   const [showLogo, setShowLogo] = useState(true);
   const [logoErr, setLogoErr] = useState<number>(0);
   const [isSignUpOpen, setIsSignUpOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   // Sign Up states
   const [suName, setSuName] = useState('');
@@ -55,169 +56,145 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center h-screen w-screen bg-slate-900">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center h-screen w-screen bg-slate-950 animate-fade-in font-sans">
       <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-10 px-8">
         {/* Left Panel - Branding */}
-        <div className="hidden md:flex flex-col items-center justify-center rounded-2xl p-10 bg-white/5 backdrop-blur-sm border border-white/10">
+        <div className="hidden md:flex flex-col items-center justify-center rounded-2xl p-10 bg-gray-800/60 backdrop-blur-sm border border-gray-700/50">
           <div className="flex items-center gap-3 mb-3 w-full max-w-md">
-            {showLogo && (
-              <img 
-                src="/logo_white.png" 
-                alt="Logo" 
-                className="h-16 w-auto object-contain" 
-                onError={() => { setLogoErr(logoErr + 1); setShowLogo(false); }} 
-              />
-            )}
+            <img src="/logo.png" alt="IT2a" className="h-10 w-auto object-contain" />
             <div>
-              <div className="text-3xl font-bold text-white">Gestor VetPro</div>
-              <div className="text-sm text-slate-300">Gestão Veterinária Inteligente</div>
+              <div className="text-3xl font-bold text-white tracking-tight">Gestor Vetsmart</div>
+              <div className="text-sm text-gray-400 uppercase tracking-widest font-medium">Gestão Veterinária Inteligente</div>
             </div>
           </div>
-          <p className="text-slate-400 text-center max-w-md mt-4">
-            Plataforma completa para gestão de clínicas veterinárias, prontuários eletrônicos, agendamentos, telemedicina e controle financeiro.
-          </p>
+          <div className="flex items-center gap-2 mt-8 text-gray-500 text-[10px] uppercase font-black tracking-widest bg-gray-900/40 px-3 py-1.5 rounded-full border border-gray-700/30">
+             <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+             SaaS Gestor v1.2 — Alpha Launch
+          </div>
         </div>
 
         {/* Right Panel - Login Form */}
         <div className="flex items-center justify-center p-0">
-          <div className="w-full max-w-lg bg-white rounded-2xl p-10 shadow-2xl relative">
-            {busy && <div className="absolute top-0 left-0 h-1 w-full bg-blue-600 animate-pulse rounded-t-2xl" />}
-            
-            <div className="flex items-center justify-center gap-2 mb-6 md:hidden">
-              {showLogo && (
-                <img 
-                  src="/logo.png" 
-                  alt="Logo" 
-                  className="h-10 w-auto object-contain" 
-                  onError={() => { setLogoErr(logoErr + 1); setShowLogo(false); }} 
-                />
-              )}
-              <span className="text-lg font-bold text-slate-900">Gestor VetPro</span>
-            </div>
+          <div className="w-full max-w-lg bg-white rounded-2xl p-10 shadow-[0_10px_35px_rgba(0,0,0,0.35)] relative border border-gray-200">
+            {busy && <div className="absolute top-0 left-0 h-1 w-full bg-indigo-600 animate-pulse rounded-t-2xl" />}
             
             {!isSignUpOpen ? (
               <>
                 <div className="text-center mb-8">
-                   <h2 className="text-2xl font-bold text-slate-800">Bem-vindo de volta</h2>
-                   <div className="text-sm text-slate-500 mt-1">Entre com suas credenciais para acessar</div>
+                   <h1 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-tight">Bem-vindo</h1>
+                   <p className="text-gray-500 text-sm font-medium">Gestão inteligente para você e sua empresa</p>
                 </div>
 
-                <form onSubmit={handleSignIn} className="space-y-4 mb-6">
+                <form onSubmit={handleSignIn} className="space-y-3 mb-6">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">E-mail</label>
                     <input 
                       value={email} 
                       onChange={(e)=>setEmail(e.target.value)} 
-                      placeholder="seu@email.com" 
+                      placeholder="E-mail" 
                       disabled={busy} 
                       type="email"
                       required
-                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50 text-slate-900" 
+                      className="w-full px-4 py-3 rounded-xl text-sm border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-indigo-500 transition-all outline-none" 
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Senha</label>
+                  <div className="relative">
                     <input 
                       value={password} 
                       onChange={(e)=>setPassword(e.target.value)} 
-                      type="password" 
-                      placeholder="••••••••" 
+                      type={showPassword ? 'text' : 'password'} 
+                      placeholder="Senha" 
                       disabled={busy} 
                       required
-                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50 text-slate-900" 
+                      className="w-full px-4 py-3 rounded-xl text-sm border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-indigo-500 transition-all outline-none pr-12" 
                     />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-indigo-600"
+                    >
+                      {showPassword ? 'Ocultar' : 'Mostrar'}
+                    </button>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button type="button" className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:underline">
+                      Esqueci minha senha
+                    </button>
                   </div>
                   
-                  {msg && <div className="p-3 bg-red-50 text-red-600 text-xs rounded-lg border border-red-100 flex items-center gap-2">
-                    <i className="fas fa-exclamation-circle"></i> {msg}
+                  {msg && <div className="text-[11px] font-bold text-rose-600 mt-4 bg-rose-50 p-2 rounded-lg border border-rose-100">
+                    {msg}
                   </div>}
 
-                  <button 
-                    type="submit"
-                    disabled={busy} 
-                    className="w-full py-3 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-70 shadow-sm hover:shadow-md mt-2"
-                  >
-                    {busy ? 'Entrando...' : 'Entrar na plataforma'}
-                  </button>
+                  <div className="grid grid-cols-2 gap-3 pt-4">
+                    <button 
+                      type="submit"
+                      disabled={busy} 
+                      className="py-3 rounded-xl text-sm font-black uppercase tracking-widest bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all disabled:opacity-50"
+                    >
+                      {busy ? 'Entrando' : 'Entrar'}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={()=>{ setIsSignUpOpen(true); setMsg(null); }} 
+                      disabled={busy} 
+                      className="py-3 rounded-xl text-sm font-black uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200 transition-all disabled:opacity-50"
+                    >
+                      Criar Conta
+                    </button>
+                  </div>
                 </form>
-                
-                <div className="text-center border-t border-slate-100 pt-6">
-                  <span className="text-xs text-slate-500">Não tem uma conta? </span>
-                  <button 
-                    onClick={()=>{ setSuEmail(email); setSuPassword(password); setIsSignUpOpen(true); setMsg(null); }} 
-                    disabled={busy} 
-                    className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline disabled:opacity-50 ml-1"
-                  >
-                    Criar conta
-                  </button>
-                </div>
               </>
             ) : (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-center mb-8">
-                   <h2 className="text-2xl font-bold text-slate-800">Criar conta</h2>
-                   <div className="text-sm text-slate-500 mt-1">Preencha os dados para se cadastrar</div>
+                   <h1 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-tight">Nova Conta</h1>
+                   <p className="text-gray-500 text-sm font-medium">Integração ao ecossistema it2a</p>
                 </div>
 
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Nome completo</label>
-                    <input 
-                      value={suName} 
-                      onChange={(e)=>setSuName(e.target.value)} 
-                      placeholder="Seu nome" 
-                      disabled={busy} 
-                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50 text-slate-900" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">E-mail corporativo</label>
-                    <input 
-                      value={suEmail} 
-                      onChange={(e)=>setSuEmail(e.target.value)} 
-                      placeholder="seu@email.com" 
-                      disabled={busy} 
-                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50 text-slate-900" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Senha de acesso</label>
-                    <input 
-                      type="password" 
-                      value={suPassword} 
-                      onChange={(e)=>setSuPassword(e.target.value)} 
-                      placeholder="Mínimo 6 caracteres" 
-                      disabled={busy} 
-                      className="w-full px-3 py-3 rounded-lg text-sm border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 bg-slate-50 text-slate-900" 
-                    />
-                  </div>
+                <div className="space-y-3 mb-6">
+                  <input 
+                    value={suName} 
+                    onChange={(e)=>setSuName(e.target.value)} 
+                    placeholder="Nome completo" 
+                    className="w-full px-4 py-3 rounded-xl text-sm border border-gray-200 bg-gray-50 text-gray-900 outline-none" 
+                  />
+                  <input 
+                    value={suEmail} 
+                    onChange={(e)=>setSuEmail(e.target.value)} 
+                    placeholder="E-mail" 
+                    className="w-full px-4 py-3 rounded-xl text-sm border border-gray-200 bg-gray-50 text-gray-900 outline-none" 
+                  />
+                  <input 
+                    type="password" 
+                    value={suPassword} 
+                    onChange={(e)=>setSuPassword(e.target.value)} 
+                    placeholder="Senha (mín. 6 caracteres)" 
+                    className="w-full px-4 py-3 rounded-xl text-sm border border-gray-200 bg-gray-50 text-gray-900 outline-none" 
+                  />
                 </div>
                 
-                {msg && <div className="p-3 bg-red-50 text-red-600 text-xs rounded-lg mb-4 border border-red-100 flex items-center gap-2">
-                   <i className="fas fa-exclamation-circle"></i> {msg}
+                {msg && <div className="text-[11px] font-bold text-rose-600 mt-4 bg-rose-50 p-2 rounded-lg border border-rose-100">
+                   {msg}
                 </div>}
                 
-                <div className="flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-4">
                   <button 
                     onClick={()=>setIsSignUpOpen(false)} 
-                    className="flex-1 py-3 rounded-lg text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+                    className="flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
                   >
                     Voltar
                   </button>
                   <button 
                     onClick={handleSignUpSubmit} 
                     disabled={busy} 
-                    className="flex-[2] py-3 rounded-lg text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-70 shadow-sm hover:shadow"
+                    className="flex-[2] py-3 rounded-xl text-sm font-black uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200 transition-all"
                   >
-                    {busy ? 'Criando...' : 'Confirmar cadastro'}
+                    {busy ? 'Criando' : 'Confirmar'}
                   </button>
                 </div>
               </div>
             )}
-          </div>
-          
-          <div className="absolute bottom-6 text-center text-xs text-slate-500/50 w-full md:w-auto md:text-white/20">
-            © 2026 Gestor VetPro • Todos os direitos reservados
           </div>
         </div>
       </div>
