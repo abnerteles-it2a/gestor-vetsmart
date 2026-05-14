@@ -480,6 +480,40 @@ async function ensureSchema() {
             );
         `);
 
+        // Medications (Bulário Veterinário)
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS medications (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                active_ingredient VARCHAR(255),
+                category VARCHAR(100) DEFAULT 'Geral',
+                concentration_mg_ml DECIMAL(10,4) DEFAULT 1.0,
+                dosage_mg_kg_dog VARCHAR(50) DEFAULT '0',
+                dosage_mg_kg_cat VARCHAR(50) DEFAULT '0',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Seed medications if empty
+        const medCheck = await client.query('SELECT COUNT(*) FROM medications');
+        if (parseInt(medCheck.rows[0].count) === 0) {
+            await client.query(`
+                INSERT INTO medications (name, active_ingredient, category, concentration_mg_ml, dosage_mg_kg_dog, dosage_mg_kg_cat) VALUES
+                ('Amoxicilina 250mg/5ml', 'Amoxicilina Triidratada', 'Antibiótico', 50, '22', '22'),
+                ('Dipirona 500mg/ml', 'Metamizol Sódico', 'Analgésico', 500, '25', '25'),
+                ('Tramadol 50mg/ml', 'Tramadol HCl', 'Analgésico Opioide', 50, '4', '2'),
+                ('Prednisolona 20mg', 'Prednisolona', 'Corticosteroide', 20, '1', '0.5'),
+                ('Propofol 10mg/ml', 'Propofol', 'Anestésico', 10, '6', '8'),
+                ('Enrofloxacino 50mg/ml', 'Enrofloxacino', 'Antibiótico', 50, '5', '2.5'),
+                ('Metronidazol 400mg', 'Metronidazol', 'Antiparasitário', 400, '15', '10'),
+                ('Furosemida 10mg/ml', 'Furosemida', 'Diurético', 10, '2', '1'),
+                ('Enalapril 5mg', 'Enalapril Maleato', 'Cardiovascular', 5, '0.5', '0.25'),
+                ('Meloxicam 2mg/ml', 'Meloxicam', 'Anti-inflamatório', 2, '0.2', '0.1')
+            `);  
+            console.log('💊 Bulário veterinário inicial inserido.');
+        }
+
         // Hospitalizations
         await client.query(`
             CREATE TABLE IF NOT EXISTS hospitalizations (
@@ -497,18 +531,23 @@ async function ensureSchema() {
             );
         `);
 
-        // Ensure Admin User
-        const adminEmail = 'admin@vetpro.com';
+        // Ensure Admin User (admin@vetsmart.com / 123456)
+        const adminEmail = 'admin@vetsmart.com';
         const adminCheck = await client.query('SELECT id FROM users WHERE email = $1', [adminEmail]);
-        
+
         if (adminCheck.rows.length === 0) {
-            console.log('👤 Criando usuário admin padrão...');
+            console.log('👤 Criando usuário admin@vetsmart.com...');
             const { hash, salt } = hashPassword('123456');
             await client.query(`
                 INSERT INTO users (name, email, password_hash, password_salt, role)
                 VALUES ('Dr. Ricardo Silva', $1, $2, $3, 'admin')
-                ON CONFLICT (email) DO NOTHING
+                ON CONFLICT (email) DO UPDATE
+                  SET password_hash = EXCLUDED.password_hash,
+                      password_salt = EXCLUDED.password_salt
             `, [adminEmail, hash, salt]);
+            console.log('✅ Usuário admin@vetsmart.com criado/atualizado.');
+        } else {
+            console.log('✅ Usuário admin@vetsmart.com já existe no banco.');
         }
 
         await client.query('COMMIT');
@@ -818,6 +857,65 @@ app.get('/api/plans', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Erro ao buscar planos' });
+    }
+});
+
+// MEDICATIONS (Bulário Veterinário)
+app.get('/api/medications', async (req, res) => {
+    const { search } = req.query;
+    try {
+        let query = 'SELECT * FROM medications';
+        const params = [];
+        if (search && search.trim()) {
+            query += ' WHERE name ILIKE $1 OR active_ingredient ILIKE $1';
+            params.push(`%${search.trim()}%`);
+        }
+        query += ' ORDER BY name ASC LIMIT 50';
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao buscar medicamentos' });
+    }
+});
+
+// GLOBAL SEARCH
+app.get('/api/search', async (req, res) => {
+    const { query } = req.query;
+    if (!query || query.trim().length < 2) {
+        return res.json({ pets: [], tutors: [], products: [] });
+    }
+    const term = `%${query.trim()}%`;
+    try {
+        const [petsRes, tutorsRes, productsRes] = await Promise.all([
+            pool.query(
+                `SELECT p.id, p.name, p.species, p.breed FROM pets p
+                 LEFT JOIN tutors t ON p.tutor_id = t.id
+                 WHERE p.name ILIKE $1 OR t.name ILIKE $1 OR p.breed ILIKE $1
+                 ORDER BY p.name ASC LIMIT 10`,
+                [term]
+            ),
+            pool.query(
+                `SELECT id, name, email, phone FROM tutors
+                 WHERE name ILIKE $1 OR email ILIKE $1 OR phone ILIKE $1
+                 ORDER BY name ASC LIMIT 10`,
+                [term]
+            ),
+            pool.query(
+                `SELECT id, name, category, price FROM products
+                 WHERE name ILIKE $1 OR category ILIKE $1
+                 ORDER BY name ASC LIMIT 10`,
+                [term]
+            )
+        ]);
+        res.json({
+            pets: petsRes.rows,
+            tutors: tutorsRes.rows,
+            products: productsRes.rows
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro na busca global' });
     }
 });
 

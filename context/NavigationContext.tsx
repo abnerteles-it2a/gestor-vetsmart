@@ -10,7 +10,7 @@ interface NavigationContextType {
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
 
 export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [activeTab, setActiveTabState] = useState('dashboard');
+  const [activeTab, setActiveTabState] = useState('home');
   const [navigationParams, setNavigationParams] = useState<any>(null);
 
   const setActiveTab = (tab: string) => {

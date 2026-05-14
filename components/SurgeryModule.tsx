@@ -3,6 +3,9 @@ import { useToast } from '../context/ToastContext';
 import { useNavigation } from '../context/NavigationContext';
 import { NewSurgeryModal } from './NewSurgeryModal';
 import { apiService } from '../services/api';
+import { KpiCard } from './KpiCard';
+
+const MODULE_COLOR = '#C62828';
 
 interface Surgery {
   id: string;
@@ -20,6 +23,9 @@ interface Surgery {
     termo: boolean;
     anestesia: boolean;
   };
+  room: string;
+  intraopNotes?: string;
+  report?: string;
 }
 
 const SurgeryModule: React.FC = () => {
@@ -30,8 +36,14 @@ const SurgeryModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'checklist' | 'intraop' | 'postop'>('checklist');
   const [isNewSurgeryModalOpen, setIsNewSurgeryModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [intraopNotes, setIntraopNotes] = useState('');
+  const [generatedReport, setGeneratedReport] = useState('');
 
   useEffect(() => {
+    if ((window as any).__setModuleBreadcrumb) {
+      (window as any).__setModuleBreadcrumb('Cirurgias');
+    }
     loadSurgeries();
   }, []);
 
@@ -53,7 +65,10 @@ const SurgeryModule: React.FC = () => {
           date: dateObj.toLocaleDateString('pt-BR'),
           time: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           status: s.status,
-          checklist: s.checklist || { jejum: false, exames: false, termo: false, anestesia: false }
+          checklist: s.checklist || { jejum: false, exames: false, termo: false, anestesia: false },
+          room: s.room || 'Sala 1',
+          intraopNotes: s.notes || '',
+          report: s.report || ''
         };
       });
 
@@ -129,7 +144,8 @@ const SurgeryModule: React.FC = () => {
             date: dateObj.toLocaleDateString('pt-BR'),
             time: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
             status: s.status,
-            checklist: s.checklist || { jejum: false, exames: false, termo: false, anestesia: false }
+            checklist: s.checklist || { jejum: false, exames: false, termo: false, anestesia: false },
+            room: s.room || 'Sala 1'
         };
 
         setSurgeries(prev => [...prev, newSurgery]);
@@ -144,26 +160,86 @@ const SurgeryModule: React.FC = () => {
     }
   };
 
+  const handleGenerateReport = async () => {
+    if (!selectedSurgery) return;
+    setIsProcessing(true);
+    try {
+        const payload = {
+            pet: { name: selectedSurgery.petName, species: 'Desconhecida' },
+            rawNotes: `Cirurgia: ${selectedSurgery.procedure}. Notas Intra-operatórias: ${intraopNotes}`,
+            history: `Tutor: ${selectedSurgery.tutorName}. Veterinário: ${selectedSurgery.vetName}`
+        };
+        const response = await apiService.structureClinicalNotes(payload);
+        const reportText = response.data.diagnosis + "\n\n" + response.data.treatment + "\n\n" + response.data.owner_instructions.text;
+        setGeneratedReport(reportText);
+        addToast('Relatório Cirúrgico gerado pela IA it2a!', 'success');
+    } catch (error) {
+        console.error(error);
+        addToast('Erro ao gerar relatório com IA.', 'error');
+    } finally {
+        setIsProcessing(false);
+    }
+  };
+
+  const rooms = [
+    { id: 'Sala 1', status: surgeries.find(s => s.room === 'Sala 1' && s.status === 'em_andamento') ? 'ocupado' : 'livre' },
+    { id: 'Sala 2', status: surgeries.find(s => s.room === 'Sala 2' && s.status === 'em_andamento') ? 'ocupado' : 'livre' }
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h3 className="text-lg md:text-lg xl:text-xl font-bold text-slate-800 dark:text-slate-100">Centro Cirúrgico</h3>
-          <p className="text-xs md:text-sm xl:text-sm text-slate-600 dark:text-slate-300">Gestão completa de procedimentos, equipe e materiais.</p>
+    <div className="flex flex-col gap-6 animate-portal-enter pb-10">
+
+      {/* Module Header */}
+      <div className="flex justify-between items-end mb-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Procedimentos</h1>
+          <p className="text-2xl font-black text-[#020617] uppercase tracking-tight">Centro Cirúrgico</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsNewSurgeryModalOpen(true)}
-          className="bg-red-600 text-white px-4 py-2 xl:px-5 xl:py-2.5 rounded-xl font-semibold shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 transition-all flex items-center gap-2 text-xs md:text-xs xl:text-sm"
+          className="omie-btn-primary"
+          style={{ background: MODULE_COLOR }}
         >
-          <i className="fas fa-plus-circle"></i> Agendar Cirurgia
+          <i className="fas fa-plus-circle mr-2"></i>Agendar Ciru&shy;rgia
         </button>
       </div>
 
-      <NewSurgeryModal 
+      <NewSurgeryModal
         isOpen={isNewSurgeryModalOpen}
         onClose={() => setIsNewSurgeryModalOpen(false)}
         onSaved={handleNewSurgerySaved}
       />
+
+      {/* KPI Row */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <KpiCard
+          title="Total Hoje"
+          value={surgeries.length.toString()}
+          icon={<i className="fas fa-scalpel"></i>}
+          subtext="Procedimentos agendados"
+          subtextColor="text-slate-400"
+          color={MODULE_COLOR}
+        />
+        {rooms.map(room => (
+          <KpiCard
+            key={room.id}
+            title={room.id}
+            value={room.status === 'ocupado' ? 'Ocupada' : 'Livre'}
+            icon={<i className="fas fa-hospital"></i>}
+            subtext={room.status === 'ocupado' ? 'Em procedimento' : 'Disponível'}
+            subtextColor={room.status === 'ocupado' ? 'text-rose-500' : 'text-emerald-500'}
+            color={room.status === 'ocupado' ? '#EF4444' : '#10B981'}
+          />
+        ))}
+        <KpiCard
+          title="Em Recuperação"
+          value={surgeries.filter(s => s.status === 'recuperacao').length.toString()}
+          icon={<i className="fas fa-procedures"></i>}
+          subtext="Pós-operatório ativo"
+          subtextColor="text-[#FF9F1C]"
+          color="#7B1FA2"
+        />
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 xl:gap-6">
         {/* Lista de Cirurgias */}
@@ -175,9 +251,14 @@ const SurgeryModule: React.FC = () => {
                     onClick={() => setSelectedSurgery(surgery)}
                     className={`p-3 xl:p-3.5 rounded-xl border cursor-pointer transition-all ${
                         selectedSurgery?.id === surgery.id
-                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 ring-1 ring-blue-300 dark:ring-blue-600'
-                            : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800'
+                            ? 'shadow-lg ring-1'
+                            : 'bg-white border-slate-100 hover:border-slate-300'
                     }`}
+                    style={selectedSurgery?.id === surgery.id ? {
+                      background: `${MODULE_COLOR}10`,
+                      borderColor: MODULE_COLOR,
+                      ['--tw-ring-color' as any]: MODULE_COLOR
+                    } : {}}
                 >
                     <div className="flex justify-between items-start mb-1.5 xl:mb-2">
                         <span className={`px-2 py-0.5 xl:px-2.5 xl:py-1 rounded-lg text-[10px] xl:text-xs font-bold uppercase ${getStatusColor(surgery.status)}`}>
@@ -224,51 +305,50 @@ const SurgeryModule: React.FC = () => {
                                 {selectedSurgery.status === 'agendado' && (
                                     <button 
                                         onClick={() => handleStatusChange(selectedSurgery.id, 'em_andamento')}
-                                        className="px-3 py-1.5 xl:px-4 xl:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs xl:text-xs 2xl:text-sm font-bold flex items-center gap-2"
+                                        className="omie-btn-primary !px-4 !py-2 !text-[10px] !rounded-lg shadow-none"
+                                        style={{ background: '#2E7D32' }}
                                     >
-                                        <i className="fas fa-play"></i> Iniciar
+                                        <i className="fas fa-play mr-1"></i> Iniciar
                                     </button>
                                 )}
                                 {selectedSurgery.status === 'em_andamento' && (
                                     <button 
                                         onClick={() => handleStatusChange(selectedSurgery.id, 'recuperacao')}
-                                        className="px-3 py-1.5 xl:px-4 xl:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs xl:text-xs 2xl:text-sm font-bold flex items-center gap-2"
+                                        className="omie-btn-primary !px-4 !py-2 !text-[10px] !rounded-lg shadow-none"
+                                        style={{ background: '#4527A0' }}
                                     >
-                                        <i className="fas fa-procedures"></i> Pós-Op
+                                        <i className="fas fa-procedures mr-1"></i> Pós-Op
                                     </button>
                                 )}
                                 {selectedSurgery.status === 'recuperacao' && (
                                     <button 
                                         onClick={() => handleStatusChange(selectedSurgery.id, 'concluido')}
-                                        className="px-3 py-1.5 xl:px-4 xl:py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs xl:text-xs 2xl:text-sm font-bold flex items-center gap-2"
+                                        className="omie-btn-primary !px-4 !py-2 !text-[10px] !rounded-lg shadow-none"
+                                        style={{ background: '#020617' }}
                                     >
-                                        <i className="fas fa-check"></i> Finalizar
+                                        <i className="fas fa-check mr-1"></i> Finalizar
                                     </button>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Tabs */}
-                    <div className="flex border-b border-slate-100 dark:border-slate-800 px-4 xl:px-5">
-                        <button 
-                            onClick={() => setActiveTab('checklist')}
-                            className={`px-4 xl:px-6 py-3 xl:py-3.5 text-xs xl:text-sm font-bold border-b-2 transition-all ${activeTab === 'checklist' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                        >
-                            1. Pré-Operatório
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('intraop')}
-                            className={`px-4 xl:px-6 py-3 xl:py-3.5 text-xs xl:text-sm font-bold border-b-2 transition-all ${activeTab === 'intraop' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                        >
-                            2. Trans-Operatório
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('postop')}
-                            className={`px-4 xl:px-6 py-3 xl:py-3.5 text-xs xl:text-sm font-bold border-b-2 transition-all ${activeTab === 'postop' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                        >
-                            3. Pós-Operatório
-                        </button>
+                    {/* Tabs with MODULE_COLOR */}
+                    <div className="flex border-b border-slate-100 px-5">
+                        {(['checklist', 'intraop', 'postop'] as const).map((tab, i) => (
+                          <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-6 py-3.5 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
+                              activeTab === tab
+                                ? 'border-b-[3px] text-white'
+                                : 'border-transparent text-slate-400 hover:text-slate-600'
+                            }`}
+                            style={activeTab === tab ? { borderBottomColor: MODULE_COLOR, color: MODULE_COLOR } : {}}
+                          >
+                            {i + 1}. {tab === 'checklist' ? 'Pré-Operatório' : tab === 'intraop' ? 'Trans-Operatório' : 'Pós-Operatório'}
+                          </button>
+                        ))}
                     </div>
 
                     {/* Content */}
@@ -389,6 +469,16 @@ const SurgeryModule: React.FC = () => {
                                             <p className="text-xl font-bold text-blue-600 dark:text-blue-400 mt-1">--:--</p>
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Notas Intra-operatórias (Anotação Rápida)</label>
+                                        <textarea 
+                                            value={intraopNotes}
+                                            onChange={(e) => setIntraopNotes(e.target.value)}
+                                            placeholder="Relate intercorrências, técnica utilizada, sutura..."
+                                            className="w-full h-32 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -399,12 +489,28 @@ const SurgeryModule: React.FC = () => {
                                     <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                                         <i className="fas fa-file-medical-alt"></i>
                                     </div>
-                                    <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Relatório Cirúrgico</h4>
+                                    <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Relatório Cirúrgico IA</h4>
                                     <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6">
-                                        A cirurgia ainda não foi finalizada. O relatório será gerado automaticamente pela IA após a conclusão do procedimento.
+                                        {generatedReport ? "Relatório gerado com sucesso pela it2a Intelligence." : "Utilize a inteligência artificial para estruturar o relatório completo baseado nas notas intra-operatórias."}
                                     </p>
-                                    <button className="px-6 py-2 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg font-bold text-sm cursor-not-allowed">
-                                        Gerar Relatório (Aguardando)
+                                    
+                                    {generatedReport ? (
+                                        <div className="text-left bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner mb-6 max-h-96 overflow-y-auto">
+                                            <pre className="whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300 font-sans leading-relaxed">{generatedReport}</pre>
+                                        </div>
+                                    ) : null}
+
+                                    <button 
+                                        onClick={handleGenerateReport}
+                                        disabled={isProcessing || !intraopNotes}
+                                        className={`px-6 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 mx-auto ${
+                                            isProcessing || !intraopNotes 
+                                            ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed' 
+                                            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200'
+                                        }`}
+                                    >
+                                        <i className={`fas ${isProcessing ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`}></i>
+                                        {isProcessing ? 'Gerando...' : generatedReport ? 'Regerar Relatório' : 'Gerar Relatório com IA'}
                                     </button>
                                 </div>
                             </div>

@@ -1,7 +1,7 @@
 
 {
-  "name": "Gestor VetPro - Gestão Veterinária Inteligente",
-  "description": "Sistema independente do ecossistema Gestor da IT2A para clínicas veterinárias e pet shops com IA integrada para automação de prontuários, planos de cuidados e previsão de estoque.",
+  "name": "VetGrid - Plataforma de Gestão Veterinária",
+  "description": "VetGrid: plataforma enterprise para clínicas e hospitais veterinários. Agenda, prontuário, internação, cirurgia, estoque, financeiro e IA clínica em um só ecossistema.",
   "requestFramePermissions": [
     "camera",
     "microphone"

@@ -1,7 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { NewAppointmentModal } from './NewItemModals';
 import { apiService } from '../services/api';
 import { useNavigation } from '../context/NavigationContext';
+
+const MODULE_COLOR = '#6A1B9A';
 
 const AgendaModule: React.FC = () => {
   const { navigateTo } = useNavigation();
@@ -11,10 +14,12 @@ const AgendaModule: React.FC = () => {
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
 
   useEffect(() => {
+    if ((window as any).__setModuleBreadcrumb) {
+      (window as any).__setModuleBreadcrumb('Agenda');
+    }
     const loadAppointments = async () => {
       setIsLoading(true);
       try {
-        // Use Real API Service
         const response = await apiService.getAppointments();
         const data = response.data;
         
@@ -36,7 +41,7 @@ const AgendaModule: React.FC = () => {
             room: a.room || 'Sala 1',
             vet: a.vet_name || 'Veterinário',
             type: a.type || 'consulta',
-            rawDate: a.appointment_date // Keep for sorting/filtering if needed
+            rawDate: a.appointment_date
           };
         });
         setAppointments(mapped);
@@ -67,139 +72,114 @@ const AgendaModule: React.FC = () => {
     ]);
   };
 
-  const getTypePillClasses = (type: string) => {
-    if (type === 'consulta') return 'bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300';
-    if (type === 'cirurgia') return 'bg-red-50 text-red-600 dark:bg-red-500/20 dark:text-red-300';
-    if (type === 'vacina') return 'bg-green-50 text-green-600 dark:bg-green-500/20 dark:text-green-300';
-    if (type === 'estetico') return 'bg-purple-50 text-purple-600 dark:bg-purple-500/20 dark:text-purple-300';
-    if (type === 'retorno') return 'bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300';
-    return 'bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300';
-  };
-
-  const getStatusPillClasses = (status: string) => {
-    if (status === 'confirmado') return 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300';
-    if (status === 'em_espera') return 'bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300';
-    if (status === 'atendido') return 'bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300';
-    if (status === 'cancelado') return 'bg-rose-50 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300';
-    return 'bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300';
+  const getStatusColor = (status: string) => {
+    if (status === 'confirmado') return 'emerald-500';
+    if (status === 'em_espera') return '#FF9F1C';
+    if (status === 'atendido') return 'blue-500';
+    if (status === 'cancelado') return 'rose-500';
+    return 'slate-400';
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Agenda</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300">Visão diária e semanal dos atendimentos da clínica.</p>
+    <div className="flex flex-col gap-6 animate-portal-enter pb-10">
+      
+      {/* Module Header */}
+      <div className="flex justify-between items-end mb-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Planejamento it2a</h1>
+          <p className="text-2xl font-black text-[#020617] uppercase tracking-tight">Agenda de Atendimentos</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-1 text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500"></span>Consulta</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500"></span>Cirurgia</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500"></span>Vacina</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-purple-500"></span>Estético</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-amber-500"></span>Retorno</span>
-          </div>
-          <div className="bg-slate-100 dark:bg-slate-800 rounded-full p-1 flex items-center text-xs">
-            <button 
-              onClick={() => setViewMode('day')}
-              className={`px-3 py-1 rounded-full transition-all ${viewMode === 'day' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-slate-100 font-bold' : 'text-slate-500 dark:text-slate-400'}`}
-            >
-              Dia
-            </button>
-            <button 
-              onClick={() => setViewMode('week')}
-              className={`px-3 py-1 rounded-full transition-all ${viewMode === 'week' ? 'bg-white dark:bg-slate-600 shadow text-slate-800 dark:text-slate-100 font-bold' : 'text-slate-500 dark:text-slate-400'}`}
-            >
-              Semana
-            </button>
+        <div className="flex gap-4">
+          <div className="flex bg-white rounded-full p-1 border border-slate-100 shadow-sm self-center h-fit">
+             <button 
+               onClick={() => setViewMode('day')}
+               className={`px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'day' ? 'text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+               style={viewMode === 'day' ? { background: MODULE_COLOR } : {}}
+             >
+               Dia
+             </button>
+             <button 
+               onClick={() => setViewMode('week')}
+               className={`px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'week' ? 'text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+               style={viewMode === 'week' ? { background: MODULE_COLOR } : {}}
+             >
+               Semana
+             </button>
           </div>
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all"
+            className="omie-btn-primary"
           >
-            <i className="fas fa-plus"></i>
+            <i className="fas fa-calendar-plus mr-2"></i> Agendar
           </button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="omie-card overflow-hidden">
+        <div className="omie-card-header !bg-slate-50/50">
+           <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Compromissos do Período</h3>
+        </div>
+        
         {isLoading ? (
-          <div className="p-8 text-center text-slate-500">Carregando agendamentos...</div>
+          <div className="p-20 text-center text-[10px] font-black uppercase text-slate-400 tracking-widest animate-pulse">Sincronizando it2a Agenda...</div>
         ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="bg-white divide-y divide-slate-50">
             {appointments.map((apt, idx) => (
-              <div key={idx} className="p-4 xl:p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                <div className="flex items-start gap-4">
-                  <div className="w-16 xl:w-20 flex flex-col items-center justify-center pt-1">
-                    <span className="text-lg xl:text-xl font-bold text-slate-800 dark:text-slate-100 leading-none">{apt.time}</span>
-                    <span className="text-[10px] xl:text-xs text-slate-400 font-medium uppercase mt-1">{apt.room}</span>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`px-2 py-0.5 rounded text-[10px] xl:text-xs font-bold uppercase tracking-wider ${getTypePillClasses(apt.type)}`}>
-                          {apt.type}
-                        </span>
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base xl:text-lg">{apt.pet}</h4>
-                        <span className="text-xs xl:text-sm text-slate-400">• {apt.species}</span>
+              <div key={idx} className="p-8 hover:bg-slate-50/50 transition-all group flex items-center gap-10">
+                <div className="w-24 flex flex-col items-center justify-center border-r border-slate-100 pr-10">
+                  <span className="text-2xl font-black tracking-tight transition-colors leading-none" style={{ color: '#020617' }}>{apt.time}</span>
+                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-2">{apt.room}</span>
+                </div>
+                
+                <div className="flex-1 flex flex-col gap-1">
+                   <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: MODULE_COLOR }}>{apt.type}</span>
+                      <div className="w-1 h-1 rounded-full bg-slate-200"></div>
+                      <h4 className="text-lg font-black text-[#020617] uppercase tracking-tight">{apt.pet}</h4>
+                      <span className="text-[10px] font-bold text-slate-300 uppercase">({apt.species})</span>
+                   </div>
+                   <div className="flex items-center gap-6 mt-1">
+                      <div className="flex items-center gap-2">
+                         <i className="fas fa-user-circle text-slate-300 text-[10px]"></i>
+                         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{apt.tutor}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] xl:text-xs font-bold uppercase ${getStatusPillClasses(apt.status)}`}>
-                          {apt.status.replace('_', ' ')}
-                        </span>
-                        {/* Start Consultation Button - Connects to Clinical Module */}
-                        <button 
-                            onClick={() => {
-                                // If we have a petId, navigate to patients record or clinical module
-                                if (apt.petId) {
-                                    navigateTo('patients', { petId: apt.petId, subTab: 'history' });
-                                } else {
-                                    navigateTo('clinical');
-                                }
-                            }}
-                            className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 p-2 rounded-lg flex items-center gap-2"
-                            title="Ver Prontuário"
-                        >
-                            <i className="fas fa-file-medical"></i>
-                            <span className="xl:hidden text-xs font-bold">Prontuário</span>
-                        </button>
-                        <button className="text-slate-300 hover:text-slate-500 dark:hover:text-slate-400 p-1">
-                          <i className="fas fa-ellipsis-v"></i>
-                        </button>
+                         <i className="fas fa-user-md text-slate-300 text-[10px]"></i>
+                         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{apt.vet}</span>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 text-sm xl:text-base text-slate-500 dark:text-slate-400 mt-1">
-                      <span className="flex items-center gap-1">
-                        <i className="fas fa-user-circle text-slate-400"></i> {apt.tutor}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <i className="fas fa-user-md text-slate-400"></i> {apt.vet}
-                      </span>
                       {apt.service && (
-                         <span className="flex items-center gap-1">
-                           <i className="fas fa-notes-medical text-slate-400"></i> {apt.service}
-                         </span>
+                         <div className="flex items-center gap-2">
+                            <i className="fas fa-notes-medical text-slate-300 text-[10px]"></i>
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight italic">{apt.service}</span>
+                         </div>
                       )}
-                      {apt.dateLabel && (
-                        <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                          {apt.dateLabel}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                   </div>
+                </div>
+
+                <div className="flex items-center gap-6">
+                   <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getStatusColor(apt.status) }}></div>
+                      <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: getStatusColor(apt.status) }}>
+                        {apt.status.replace('_', ' ')}
+                      </span>
+                   </div>
+                   <button 
+                      onClick={() => apt.petId && navigateTo('patients', { petId: apt.petId, subTab: 'history' })}
+                      className="omie-btn-secondary !px-6 !py-2 !text-[9px]"
+                   >
+                      Prontuário
+                   </button>
+                   <button className="w-8 h-8 rounded-full border border-slate-100 flex items-center justify-center text-slate-300 hover:text-[#FF9F1C] hover:border-[#FF9F1C] transition-all">
+                      <i className="fas fa-ellipsis-v text-[10px]"></i>
+                   </button>
                 </div>
               </div>
             ))}
             
             {appointments.length === 0 && (
-              <div className="p-12 text-center">
-                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                  <i className="fas fa-calendar-times text-2xl"></i>
-                </div>
-                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">Sem agendamentos</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum atendimento agendado para este período.</p>
+              <div className="p-20 text-center">
+                <i className="fas fa-calendar-times text-4xl text-slate-100 mb-6"></i>
+                <h3 className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Agenda vazia para este período.</h3>
               </div>
             )}
           </div>

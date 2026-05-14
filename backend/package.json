@@ -1,7 +1,7 @@
 {
-  "name": "gestor-vetpro-api",
+  "name": "vetgrid-api",
   "version": "1.0.0",
-  "description": "API Backend para Gestor VetPro",
+  "description": "API Backend para VetGrid - Plataforma de Gestão Veterinária",
   "main": "server.js",
   "type": "module",
   "scripts": {

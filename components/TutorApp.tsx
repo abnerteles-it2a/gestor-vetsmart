@@ -21,6 +21,11 @@ const TutorApp: React.FC = () => {
     { id: 202, pet: "Thor", name: "Antirrábica", date: "15/05/2025", nextDue: "15/05/2026", status: "ok" }
   ];
 
+  const handleQuickAction = (label: string) => {
+    if (label === 'Agendar') setActiveTab('appointments');
+    // Other quick actions can be expanded here
+  };
+
   const renderContent = () => {
     switch(activeTab) {
       case 'home':

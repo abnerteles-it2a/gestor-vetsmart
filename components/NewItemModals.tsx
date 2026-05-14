@@ -11,30 +11,52 @@ export interface ModalProps {
   onSubmit: (data: any) => void;
 }
 
+
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, onSubmit }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg xl:max-w-2xl overflow-hidden animate-in zoom-in duration-200 border border-slate-100 dark:border-slate-800">
-        <div className="px-6 py-4 xl:px-8 xl:py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900">
-          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg xl:text-2xl">{title}</h3>
-          <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xl xl:text-2xl">
-            <i className="fas fa-times"></i>
+    <div className="omie-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="omie-modal-content">
+        <div className="omie-modal-header bg-white">
+          <h3 className="omie-modal-title">{title}</h3>
+          <button 
+            onClick={onClose} 
+            className="w-10 h-10 flex items-center justify-center rounded-full text-slate-300 hover:text-[#FF9F1C] hover:bg-slate-50 transition-all border-none bg-transparent cursor-pointer"
+          >
+            <i className="fas fa-times text-lg"></i>
           </button>
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); onSubmit({}); }}>
-          <div className="p-6 xl:p-8 space-y-4 xl:space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <form 
+          className="flex flex-col flex-1 overflow-hidden"
+          onSubmit={(e) => { 
+            e.preventDefault(); 
+            onSubmit({}); 
+          }}
+        >
+          <div className="omie-modal-body bg-white custom-scrollbar">
             {children}
           </div>
-          <div className="px-6 py-4 xl:px-8 xl:py-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 bg-slate-50/50 dark:bg-slate-900">
-            <button type="button" onClick={onClose} className="px-4 py-2 xl:px-6 xl:py-3 text-sm xl:text-base font-semibold text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">Cancelar</button>
-            <button type="submit" className="px-6 py-2 xl:px-8 xl:py-3 text-sm xl:text-base font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 dark:shadow-blue-900/30 transition-all">Salvar Registro</button>
+          <div className="omie-modal-footer">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="omie-btn-secondary !px-10"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              className="omie-btn-primary !px-12 shadow-2xl shadow-orange-500/20"
+            >
+              Confirmar Registro it2a
+            </button>
           </div>
         </form>
       </div>
     </div>
   );
 };
+
 
 interface NewTutorModalProps {
   isOpen: boolean;
@@ -97,35 +119,35 @@ export const NewTutorModal: React.FC<NewTutorModalProps> = ({ isOpen, onClose, o
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Novo Tutor" onSubmit={handleSubmit}>
-      <div className="space-y-4">
+      <div className="space-y-5">
         {error && (
-          <div className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 rounded-xl px-3 py-2">
+          <div className="text-[11px] font-black uppercase text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-4 py-3 animate-shake">
             {error}
           </div>
         )}
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome Completo</label>
+          <label className="omie-label">Nome Completo</label>
           <input
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             placeholder="Ex: João Silva"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Telefone</label>
+          <label className="omie-label">Telefone de Contato</label>
           <input
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             placeholder="(00) 00000-0000"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Email</label>
+          <label className="omie-label">E-mail Corporativo</label>
           <input
             type="email"
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             placeholder="exemplo@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -289,42 +311,42 @@ export const NewPetModal: React.FC<NewPetModalProps> = ({ isOpen, onClose, onSav
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} title={petToEdit ? "Editar Paciente" : "Novo Paciente (Pet)"} onSubmit={handleSubmit}>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-6">
         {error && (
-          <div className="col-span-2 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 rounded-xl px-3 py-2">
+          <div className="col-span-2 text-[11px] font-black uppercase text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-4 py-3 animate-shake">
             {error}
           </div>
         )}
 
         <div className="col-span-2 flex justify-center mb-2">
            <div className="relative group">
-             <div className="w-24 h-24 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden">
+             <div className="w-28 h-28 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
                {photo ? (
                  <img src={photo} alt="Preview" className="w-full h-full object-cover" />
                ) : (
-                 <i className="fas fa-camera text-2xl text-slate-400"></i>
+                 <i className="fas fa-camera text-3xl text-slate-300"></i>
                )}
              </div>
-             <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-full cursor-pointer transition-opacity">
-                <i className="fas fa-upload text-white"></i>
+             <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 rounded-xl cursor-pointer transition-opacity">
+                <i className="fas fa-upload text-white text-xl"></i>
                 <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
              </label>
            </div>
         </div>
 
         <div className="col-span-2">
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome do Pet</label>
+          <label className="omie-label">Nome do Paciente</label>
           <input
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             placeholder="Ex: Tobias"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Espécie</label>
+          <label className="omie-label">Espécie</label>
           <select
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             value={species}
             onChange={(e) => setSpecies(e.target.value)}
           >
@@ -337,38 +359,38 @@ export const NewPetModal: React.FC<NewPetModalProps> = ({ isOpen, onClose, onSav
           </select>
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Raça</label>
+          <label className="omie-label">Raça</label>
           <input
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             placeholder="Ex: Poodle"
             value={breed}
             onChange={(e) => setBreed(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Data de Nascimento</label>
+          <label className="omie-label">Data de Nascimento</label>
           <input
             type="date"
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             value={birthDate}
             onChange={(e) => setBirthDate(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Peso (kg)</label>
+          <label className="omie-label">Peso (kg)</label>
           <input
             type="number"
             step="0.1"
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             placeholder="0.0"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
           />
         </div>
         <div className="col-span-2">
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Alergias</label>
+          <label className="omie-label">Alergias e Restrições</label>
           <textarea
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="omie-input resize-none"
             rows={3}
             placeholder="Descreva alergias conhecidas (opcional)"
             value={allergies}
@@ -376,10 +398,10 @@ export const NewPetModal: React.FC<NewPetModalProps> = ({ isOpen, onClose, onSav
           />
         </div>
         <div className="col-span-2">
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Tutor</label>
-          <div className="flex gap-2">
+          <label className="omie-label">Tutor Responsável</label>
+          <div className="flex gap-3">
             <select
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input flex-1"
               value={tutor}
               onChange={(e) => setTutor(e.target.value)}
             >
@@ -390,9 +412,10 @@ export const NewPetModal: React.FC<NewPetModalProps> = ({ isOpen, onClose, onSav
             </select>
             <button
               type="button"
-              className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 whitespace-nowrap"
+              className="omie-btn-secondary whitespace-nowrap px-6"
               onClick={() => setIsTutorModalOpen(true)}
             >
+              <i className="fas fa-plus mr-2"></i>
               Novo Tutor
             </button>
           </div>
@@ -484,15 +507,15 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
     <Modal isOpen={isOpen} onClose={onClose} title="Internar Paciente" onSubmit={handleSubmit}>
       <div className="space-y-4">
         {error && (
-          <div className="text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+          <div className="omie-error-pill animate-shake">
             {error}
           </div>
         )}
         
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 uppercase mb-1">Paciente</label>
+          <label className="omie-label">Paciente</label>
           <select
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
           >
@@ -504,9 +527,9 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
         </div>
 
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 uppercase mb-1">Motivo da Internação</label>
+          <label className="omie-label">Motivo da Internação</label>
           <input
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             placeholder="Ex: Pós-operatório, Desidratação..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -515,9 +538,9 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 uppercase mb-1">Baia / Leito</label>
+            <label className="omie-label">Baia / Leito</label>
             <select
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               value={bayId}
               onChange={(e) => setBayId(e.target.value)}
             >
@@ -529,9 +552,9 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
           </div>
 
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 uppercase mb-1">Status Inicial</label>
+            <label className="omie-label">Status Inicial</label>
             <select
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             >
@@ -543,14 +566,15 @@ export const NewAdmissionModal: React.FC<NewAdmissionModalProps> = ({ isOpen, on
         </div>
 
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 uppercase mb-1">Próxima Medicação</label>
+          <label className="omie-label">Próxima Medicação</label>
           <input
             type="time"
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             value={nextMedication}
             onChange={(e) => setNextMedication(e.target.value)}
           />
         </div>
+
       </div>
     </Modal>
   );
@@ -657,34 +681,34 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen
     <Modal isOpen={isOpen} onClose={onClose} title="Novo Agendamento" onSubmit={handleSubmit}>
       <div className="space-y-4">
         {error && (
-          <div className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 rounded-xl px-3 py-2">
+          <div className="omie-error-pill animate-shake">
             {error}
           </div>
         )}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Data</label>
+            <label className="omie-label">Data</label>
             <input
               type="date"
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Horário</label>
+            <label className="omie-label">Horário</label>
             <input
               type="time"
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               value={time}
               onChange={(e) => setTime(e.target.value)}
             />
           </div>
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Pet / Paciente</label>
+          <label className="omie-label">Pet / Paciente</label>
           <select
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             value={pet}
             onChange={(e) => setPet(e.target.value)}
           >
@@ -695,9 +719,9 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen
           </select>
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Veterinário</label>
+          <label className="omie-label">Veterinário</label>
           <select
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             value={vet}
             onChange={(e) => setVet(e.target.value)}
           >
@@ -708,9 +732,9 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen
           </select>
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Serviço</label>
+          <label className="omie-label">Serviço</label>
           <select
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             value={service}
             onChange={(e) => setService(e.target.value)}
           >
@@ -723,15 +747,16 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen
           </select>
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Observações</label>
+          <label className="omie-label">Observações</label>
           <textarea
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="omie-input resize-none"
             rows={3}
             placeholder="Informações adicionais relevantes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
         </div>
+
       </div>
     </Modal>
   );
@@ -825,14 +850,14 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
     <Modal isOpen={isOpen} onClose={onClose} title="Registrar Nova Venda" onSubmit={handleSubmit}>
       <div className="space-y-4">
         {error && (
-          <div className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 rounded-xl px-3 py-2">
+          <div className="omie-error-pill animate-shake">
             {error}
           </div>
         )}
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Cliente / Tutor</label>
+          <label className="omie-label">Cliente / Tutor</label>
            <select
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             value={customer}
             onChange={(e) => setCustomer(e.target.value)}
           >
@@ -844,9 +869,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
           </select>
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Pet (Opcional)</label>
+          <label className="omie-label">Pet (Opcional)</label>
           <select
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             value={petId}
             onChange={(e) => setPetId(e.target.value)}
           >
@@ -860,9 +885,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
           </select>
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Tipo de Serviço</label>
+          <label className="omie-label">Tipo de Serviço</label>
           <select
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             value={serviceType}
             onChange={(e) => setServiceType(e.target.value)}
           >
@@ -875,20 +900,20 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Valor (R$)</label>
+            <label className="omie-label">Valor (R$)</label>
             <input
               type="number"
               step="0.01"
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               placeholder="0,00"
               value={value}
               onChange={(e) => setValue(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Forma de Pagamento</label>
+            <label className="omie-label">Forma de Pagamento</label>
             <select
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
             >
@@ -901,21 +926,21 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
           </div>
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Status</label>
+          <label className="omie-label">Status</label>
           <div className="flex gap-4 text-xs">
-            <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+            <label className="flex items-center gap-2 cursor-pointer text-slate-700">
               <input
                 type="radio"
-                className="accent-blue-600"
+                className="accent-[#FF9F1C]"
                 checked={status === 'Pago'}
                 onChange={() => setStatus('Pago')}
               />
               Pago
             </label>
-            <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+            <label className="flex items-center gap-2 cursor-pointer text-slate-700">
               <input
                 type="radio"
-                className="accent-blue-600"
+                className="accent-[#FF9F1C]"
                 checked={status === 'Pendente'}
                 onChange={() => setStatus('Pendente')}
               />
@@ -924,15 +949,16 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({ isOpen, onClose, onS
           </div>
         </div>
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Descrição</label>
+          <label className="omie-label">Descrição</label>
           <textarea
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="omie-input resize-none"
             rows={3}
             placeholder="Ex: Consulta + Vacina V10"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
+
       </div>
     </Modal>
   );
@@ -1025,14 +1051,14 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
     <Modal isOpen={isOpen} onClose={onClose} title="Novo Item no Estoque" onSubmit={handleSubmit}>
       <div className="space-y-4">
         {error && (
-          <div className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 rounded-xl px-3 py-2">
+          <div className="omie-error-pill animate-shake">
             {error}
           </div>
         )}
         <div>
-          <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome do Produto</label>
+          <label className="omie-label">Nome do Produto</label>
           <input
-            className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+            className="omie-input"
             placeholder="Ex: Vacina V10"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -1040,9 +1066,9 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Categoria</label>
+            <label className="omie-label">Categoria</label>
             <select
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
@@ -1055,11 +1081,11 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
             </select>
           </div>
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Preço Unitário (R$)</label>
+            <label className="omie-label">Preço Unitário (R$)</label>
             <input
               type="number"
               step="0.01"
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               placeholder="0,00"
               value={unitPrice}
               onChange={(e) => setUnitPrice(e.target.value)}
@@ -1068,19 +1094,19 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Quantidade</label>
+            <label className="omie-label">Quantidade</label>
             <input
               type="number"
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               placeholder="0"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Fornecedor</label>
+            <label className="omie-label">Fornecedor</label>
             <input
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               placeholder="Nome do fornecedor"
               value={supplier}
               onChange={(e) => setSupplier(e.target.value)}
@@ -1089,24 +1115,25 @@ export const NewInventoryModal: React.FC<NewInventoryModalProps> = ({ isOpen, on
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Data de Validade</label>
+            <label className="omie-label">Data de Validade</label>
             <input
               type="date"
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               value={expirationDate}
               onChange={(e) => setExpirationDate(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs xl:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">SKU / Código</label>
+            <label className="omie-label">SKU / Código</label>
             <input
-              className="w-full px-4 py-2 xl:px-5 xl:py-3 xl:text-base rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="omie-input"
               placeholder="Opcional"
               value={sku}
               onChange={(e) => setSku(e.target.value)}
             />
           </div>
         </div>
+
       </div>
     </Modal>
   );

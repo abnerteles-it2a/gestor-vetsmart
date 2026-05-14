@@ -4,6 +4,9 @@ import { useNavigation } from '../context/NavigationContext';
 import { apiService } from '../services/api';
 import { getHospitalizationRound } from '../services/vertexAiService';
 import { PetSpecies } from '../types';
+import { KpiCard } from './KpiCard';
+
+const MODULE_COLOR = '#B71C1C';
 
 interface Patient {
   id: string; // Hospitalization ID
@@ -42,6 +45,9 @@ const HospitalizationModule: React.FC = () => {
   });
 
   React.useEffect(() => {
+    if ((window as any).__setModuleBreadcrumb) {
+      (window as any).__setModuleBreadcrumb('Internação');
+    }
     const loadPatients = async () => {
       try {
         const response = await apiService.getHospitalizations();
@@ -164,20 +170,67 @@ const HospitalizationModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h3 className="text-lg xl:text-xl 2xl:text-2xl font-bold text-slate-800 dark:text-slate-100">Internação</h3>
-          <p className="text-xs xl:text-sm 2xl:text-base text-slate-600 dark:text-slate-300">Monitoramento de pacientes e gestão de baias.</p>
+    <div className="flex flex-col gap-6 animate-portal-enter pb-10">
+
+      {/* Module Header */}
+      <div className="flex justify-between items-end mb-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Pacientes Internados</h1>
+          <p className="text-2xl font-black text-[#020617] uppercase tracking-tight">Internação &amp; UTI</p>
         </div>
-        <button
-          onClick={handleSmartRound}
-          disabled={isProcessing}
-          className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-3 py-1.5 xl:px-4 xl:py-2 2xl:px-6 2xl:py-3 rounded-xl font-bold shadow-lg shadow-teal-200 dark:shadow-none hover:shadow-teal-300 hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed text-xs xl:text-sm 2xl:text-base"
-        >
-          <i className={`fas ${isProcessing ? 'fa-spinner fa-spin' : 'fa-clipboard-check'}`}></i>
-          {isProcessing ? 'Analisando...' : 'Ronda Inteligente IA'}
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={handleSmartRound}
+            disabled={isProcessing}
+            className="omie-btn-secondary"
+          >
+            <i className={`fas ${isProcessing ? 'fa-spinner fa-spin' : 'fa-clipboard-check'} mr-2`}></i>
+            {isProcessing ? 'Analisando...' : 'Ronda IA'}
+          </button>
+          <button
+            onClick={() => setIsAdmissionModalOpen(true)}
+            className="omie-btn-primary"
+            style={{ background: MODULE_COLOR }}
+          >
+            <i className="fas fa-plus mr-2"></i>Internar Paciente
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+        <KpiCard
+          title="Internados"
+          value={patients.length.toString()}
+          icon={<i className="fas fa-bed"></i>}
+          subtext="Total em internação"
+          subtextColor="text-slate-400"
+          color={MODULE_COLOR}
+        />
+        <KpiCard
+          title="Críticos"
+          value={patients.filter(p => p.status === 'critical').length.toString()}
+          icon={<i className="fas fa-heart-pulse"></i>}
+          subtext="Requerem atenção imediata"
+          subtextColor="text-rose-500"
+          color="#EF4444"
+        />
+        <KpiCard
+          title="Em Recuperação"
+          value={patients.filter(p => p.status === 'recovering').length.toString()}
+          icon={<i className="fas fa-person-walking"></i>}
+          subtext="Evolução positiva"
+          subtextColor="text-[#1565C0]"
+          color="#1565C0"
+        />
+        <KpiCard
+          title="Baias Livres"
+          value={(bays.length - patients.length).toString()}
+          icon={<i className="fas fa-door-open"></i>}
+          subtext={`de ${bays.length} baias disponíveis`}
+          subtextColor="text-emerald-500"
+          color="#00695C"
+        />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 xl:gap-6">
@@ -189,10 +242,15 @@ const HospitalizationModule: React.FC = () => {
               <div
                 key={bay.id}
                 onClick={() => setSelectedBay(bay.id)}
-                className={`relative p-2 xl:p-3 2xl:p-4 rounded-2xl border-2 transition-all cursor-pointer group ${selectedBay === bay.id
-                    ? 'border-blue-500 shadow-lg ring-2 ring-blue-200 dark:ring-blue-900'
-                    : 'border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700'
-                  } ${patient ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/50'}`}
+                className={`relative p-2 xl:p-3 2xl:p-4 rounded-2xl border-2 transition-all cursor-pointer group ${
+                    selectedBay === bay.id
+                      ? 'shadow-lg ring-2'
+                      : 'border-slate-100 hover:border-slate-300'
+                  } ${patient ? 'bg-white' : 'bg-slate-50'}`}
+                style={selectedBay === bay.id ? {
+                  borderColor: MODULE_COLOR,
+                  ['--tw-ring-color' as any]: `${MODULE_COLOR}40`
+                } : {}}
               >
                 <div className="flex justify-between items-start mb-2">
                   <span className={`text-[10px] xl:text-xs 2xl:text-sm font-bold uppercase px-2 py-1 rounded-lg ${bay.type === 'Isolamento' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
@@ -279,32 +337,36 @@ const HospitalizationModule: React.FC = () => {
                                 navigateTo('patients', { petId: patient.petId, subTab: 'history' });
                             }
                         }}
-                        className="w-full bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2 text-xs xl:text-sm 2xl:text-base"
+                        className="omie-btn-primary w-full !rounded-xl !py-2 !text-[10px] shadow-none"
+                        style={{ background: MODULE_COLOR }}
                     >
-                        <i className="fas fa-file-medical"></i> Ver Prontuário
+                        <i className="fas fa-file-medical mr-2"></i> Ver Prontuário
                     </button>
                     <button 
                         onClick={handleOpenStatusModal}
-                        className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-2 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs xl:text-sm 2xl:text-base"
+                        className="omie-btn-secondary w-full !rounded-xl !py-2 !text-[10px]"
+                        style={{ color: MODULE_COLOR, borderColor: MODULE_COLOR }}
                     >
-                        <i className="fas fa-edit"></i> Atualizar Status
+                        <i className="fas fa-edit mr-2"></i> Atualizar Status
                     </button>
                     <button 
                         onClick={() => addToast('Funcionalidade de administração de medicação em desenvolvimento.', 'info')}
-                        className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-2 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs xl:text-sm 2xl:text-base"
+                        className="omie-btn-secondary w-full !rounded-xl !py-2 !text-[10px]"
+                        style={{ color: MODULE_COLOR, borderColor: MODULE_COLOR }}
                     >
-                        <i className="fas fa-syringe"></i> Administrar Medicação
+                        <i className="fas fa-syringe mr-2"></i> Administrar Medicação
                     </button>
                 </div>
               </div>
             ) : (
               <div className="text-center py-8 animate-in fade-in duration-300">
-                <i className="fas fa-check-circle text-3xl xl:text-4xl text-green-500 mb-3"></i>
-                <p className="font-bold text-slate-800 dark:text-slate-100 text-sm xl:text-base">Baia Livre</p>
-                <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 mb-6">Disponível para nova internação.</p>
+                <i className="fas fa-check-circle text-3xl xl:text-4xl text-emerald-500 mb-3"></i>
+                <p className="font-bold text-slate-800 text-sm xl:text-base">Baia Livre</p>
+                <p className="text-xs xl:text-sm text-slate-500 mb-6">Disponível para nova internação.</p>
                 <button
                   onClick={() => setIsAdmissionModalOpen(true)}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all text-xs xl:text-sm 2xl:text-base"
+                  className="omie-btn-primary w-full !rounded-xl !py-2 !text-[10px]"
+                  style={{ background: MODULE_COLOR }}
                 >
                   <i className="fas fa-plus mr-2"></i> Internar Paciente
                 </button>

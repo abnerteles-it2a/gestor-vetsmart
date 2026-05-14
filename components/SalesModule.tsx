@@ -1,18 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { NewSaleModal } from './NewItemModals';
+import { KpiCard } from './KpiCard';
 import { apiService } from '../services/api';
+import { QuotesPanel } from './QuotesPanel';
+
+const MODULE_COLOR = '#E65100';
 
 const SalesModule: React.FC = () => {
   const [showNewSaleModal, setShowNewSaleModal] = useState(false);
   const [sales, setSales] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState<'sales' | 'quotes'>('sales');
 
-  // Derived state for KPIs
   const { totalSales, salesCount, ticketAverage } = React.useMemo(() => {
     const validSales = sales.filter(s => s.status === 'concluido' || s.status === 'concluído');
     const total = validSales.reduce((acc, curr) => {
-      // If value is a string (mock), parse it. If number (real), use it.
       let val = 0;
       if (typeof curr.value === 'number') {
         val = curr.value;
@@ -29,6 +32,9 @@ const SalesModule: React.FC = () => {
   }, [sales]);
 
   useEffect(() => {
+    if ((window as any).__setModuleBreadcrumb) {
+      (window as any).__setModuleBreadcrumb(activeSection === 'quotes' ? 'Orçamentos' : 'Caixa');
+    }
     const loadSales = async () => {
       setIsLoading(true);
       try {
@@ -37,7 +43,7 @@ const SalesModule: React.FC = () => {
         const mapped = data.map((s: any) => ({
             id: s.id,
             date: new Date(s.sale_date).toLocaleDateString('pt-BR') + ' ' + new Date(s.sale_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-            desc: `Venda #${s.id}`, // Generic description as items are not in the main list query yet
+            desc: `Venda #${s.id}`,
             value: parseFloat(s.total_amount),
             payment: s.payment_method,
             status: s.status
@@ -53,8 +59,6 @@ const SalesModule: React.FC = () => {
   }, []);
 
   const handleNewSaleSaved = (sale: any) => {
-    // Determine format based on whether it came from API (real) or Mock
-    // The modal will likely return the real object structure after refactor
     const mappedSale = {
         id: sale.id,
         date: new Date(sale.sale_date || new Date()).toLocaleDateString('pt-BR') + ' ' + new Date(sale.sale_date || new Date()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
@@ -67,106 +71,146 @@ const SalesModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Frente de Caixa</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300">Gestão de vendas, pagamentos e fluxo financeiro diário.</p>
+    <div className="flex flex-col gap-6 animate-portal-enter pb-10">
+      
+      {/* Module Header */}
+      <div className="flex justify-between items-end mb-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Ponto de Venda & Checkout</h1>
+          <p className="text-2xl font-black text-[#020617] uppercase tracking-tight">Frente de Caixa</p>
         </div>
-        <button 
-          onClick={() => setShowNewSaleModal(true)}
-          className="bg-green-600 text-white px-6 py-2 rounded-xl font-semibold shadow-lg shadow-green-200 hover:bg-green-700 transition-all flex items-center gap-2"
-        >
-          <i className="fas fa-cart-plus"></i> Nova Venda
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => setShowNewSaleModal(true)}
+            className="omie-btn-primary"
+          >
+            <i className="fas fa-cart-plus mr-2"></i> Nova Venda
+          </button>
+        </div>
       </div>
 
+      {/* Section switcher */}
+      <div className="flex bg-slate-100 rounded-xl p-1 w-fit">
+        {[
+          { id: 'sales',  label: '💳 Frente de Caixa' },
+          { id: 'quotes', label: '📄 Orçamentos' },
+        ].map(s => (
+          <button
+            key={s.id}
+            onClick={() => setActiveSection(s.id as any)}
+            className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+              activeSection === s.id
+                ? 'bg-white text-[#E65100] shadow-sm'
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {activeSection === 'quotes' ? (
+        <QuotesPanel />
+      ) : (
+        <>
+
+      {/* KPI Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-           <p className="text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase mb-2">Vendas Hoje</p>
-           <h4 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-             {totalSales.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-           </h4>
-           <div className="mt-4 flex items-center gap-2 text-green-500 text-xs font-bold">
-              <i className="fas fa-arrow-up"></i> 15% em relação a ontem
+        <KpiCard 
+          title="Faturamento Diário" 
+          value={totalSales.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          icon={<i className="fas fa-cash-register"></i>}
+          subtext={`${salesCount} vendas concluídas`}
+          subtextColor="text-emerald-500"
+          color={MODULE_COLOR}
+        />
+        <KpiCard 
+          title="Ticket Médio" 
+          value={ticketAverage.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          icon={<i className="fas fa-receipt"></i>}
+          subtext="Por transação"
+          subtextColor="text-slate-400"
+          color={MODULE_COLOR}
+        />
+        <div className="omie-card !p-5 bg-[#020617] flex items-center justify-between text-white border-none shadow-2xl relative overflow-hidden group">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+           <div className="z-10">
+               <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-1 block">Status do PDV</span>
+               <h4 className="text-xl font-black text-emerald-400 uppercase tracking-tight">Caixa Aberto</h4>
            </div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-           <p className="text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase mb-2">Ticket Médio</p>
-           <h4 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-             {ticketAverage.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-           </h4>
-           <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-4 italic">Baseado em {salesCount} vendas</p>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
-           <div>
-               <p className="text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase mb-2">Status do Caixa</p>
-               <h4 className="text-lg font-bold text-green-600">ABERTO</h4>
-           </div>
-           <button className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold">Fechar Caixa</button>
+           <button className="z-10 omie-btn-secondary !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !px-8 !py-2 !text-[9px]">Fechar</button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center">
-            <h4 className="font-bold text-slate-800 dark:text-slate-100">Últimas Transações</h4>
-            <div className="flex gap-2">
-                <button className="text-sm text-blue-600 font-bold px-3 py-1">Hoje</button>
-                <button className="text-sm text-slate-500 dark:text-slate-500 px-3 py-1">Ontem</button>
-            </div>
+      {/* Main Table */}
+      <div className="omie-table-container">
+        <div className="omie-card-header !bg-slate-50/50">
+           <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Histórico de Transações</h3>
         </div>
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wider">
+        <table className="omie-table">
+          <thead>
             <tr>
-              <th className="px-6 py-4">ID / Data</th>
-              <th className="px-6 py-4">Descrição</th>
-              <th className="px-6 py-4">Valor</th>
-              <th className="px-6 py-4">Forma Pagto</th>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-right">Ações</th>
+              <th>Cupom / Data</th>
+              <th>Itens / Descrição</th>
+              <th>Total</th>
+              <th>Pagamento</th>
+              <th>Status</th>
+              <th className="text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+          <tbody>
             {sales.map((sale: any, idx) => (
-              <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/70 transition-all">
-                <td className="px-6 py-4">
+              <tr key={idx} className="group">
+                <td>
                   <div className="flex flex-col">
-                    <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">#{sale.id}</span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-500">{sale.date}</span>
+                    <span className="text-sm font-black text-[#020617] uppercase tracking-tight group-hover:text-[#FF9F1C]">#{sale.id}</span>
+                    <span className="text-[9px] font-bold text-slate-300 uppercase">{sale.date}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{sale.desc}</td>
-                <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">
-                  {sale.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                <td>
+                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{sale.desc}</span>
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
-                   <div className="flex items-center gap-2">
-                      <i className={`fas ${sale.payment === 'Pix' ? 'fa-qrcode' : 'fa-credit-card'} text-slate-500 dark:text-slate-500`}></i>
-                      {sale.payment}
-                   </div>
-                </td>
-                <td className="px-6 py-4">
-                   <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                    (sale.status === 'concluído' || sale.status === 'concluido')
-                      ? 'bg-green-50 text-green-600 dark:bg-green-500/20 dark:text-green-300'
-                      : 'bg-red-50 text-red-600 dark:bg-red-500/20 dark:text-red-300'
-                   }`}>
-                    {sale.status}
+                <td>
+                   <span className="text-sm font-black text-[#020617] uppercase tracking-tight">
+                    {sale.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                    </span>
                 </td>
-                <td className="px-6 py-4 text-right">
-                    <button className="text-slate-500 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 px-2"><i className="fas fa-print"></i></button>
+                <td>
+                   <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100">
+                         <i className={`fas ${sale.payment === 'Pix' ? 'fa-qrcode' : 'fa-credit-card'} text-[10px]`}></i>
+                      </div>
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{sale.payment}</span>
+                   </div>
+                </td>
+                <td>
+                   <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-200">
+                         <div className={`w-full h-full rounded-full animate-ping ${(sale.status === 'concluído' || sale.status === 'concluido') ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                      </div>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${(sale.status === 'concluído' || sale.status === 'concluido') ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {sale.status}
+                      </span>
+                   </div>
+                </td>
+                <td className="text-right">
+                    <button className="w-8 h-8 rounded-full border border-slate-100 flex items-center justify-center text-slate-300 hover:text-[#FF9F1C] hover:border-[#FF9F1C] transition-all">
+                       <i className="fas fa-print text-[10px]"></i>
+                    </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
       <NewSaleModal
         isOpen={showNewSaleModal}
         onClose={() => setShowNewSaleModal(false)}
         onSaved={handleNewSaleSaved}
       />
+      </>
+      )}
     </div>
   );
 };

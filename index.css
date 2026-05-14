@@ -2,82 +2,339 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Corporate Blue (Overrides Indigo to feel sober and reliable) */
-  --color-indigo-50: #f4f6f8;
-  --color-indigo-100: #e4e9f0;
-  --color-indigo-200: #c9d4e2;
-  --color-indigo-300: #9eafc5;
-  --color-indigo-400: #6f86a3;
-  --color-indigo-500: #4f6484;
-  --color-indigo-600: #3b4e6d;
-  --color-indigo-700: #30405c;
-  --color-indigo-800: #29354d;
-  --color-indigo-900: #242d41;
-  --color-indigo-950: #1a2232;
+  /* Omie / it2a Exact Palette */
+  --color-omie-midnight: #001e2c;
+  --color-omie-sidebar: #020617;
+  --color-omie-orange: #FF9F1C;
+  --color-omie-blue: #00B4D8;
+  --color-omie-bg: #F4F7F9;
+  --color-omie-border: #E0E7EF;
+  --color-omie-text: #1A1A2E;
+  --color-omie-text-muted: #64748b;
 
   /* Enterprise High-Contrast Basis */
   --color-white: #ffffff;
 
-  /* Clean Fintech Backdrop (Matte Slate for deeper contrast) */
-  --color-slate-50: #f1f5f9;  /* Muted background */
-  --color-slate-100: #e2e8f0; /* Muted borders */
-  --color-slate-200: #cbd5e1; 
+  /* Clean Fintech Backdrop */
+  --color-slate-50: #f1f5f9;
+  --color-slate-100: #e2e8f0;
+  --color-slate-200: #cbd5e1;
 
-  /* Crisp Shadows for the "Portal" feel (Larger, more subtle) */
-  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
-  --shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.04), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 10px 15px -3px rgba(15, 23, 42, 0.06), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 10px 10px -5px rgba(15, 23, 42, 0.04);
-  --shadow-xl: 0 25px 50px -12px rgba(15, 23, 42, 0.12);
+  /* Crisp Shadows for the "Portal" feel */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.15);
+
+  /* Omie Specifics */
+  --omie-border: #E0E7EF;
+  --omie-bg: #F4F7F9;
+  --omie-active: #4F46E5;
 }
 
-/* Fluid typography: High-density Executive Scale */
+/* Fluid typography: High-density Executive Scale (it2a standard) */
 html {
   font-size: clamp(12.5px, 0.45vw + 8.5px, 15px);
-  scrollbar-gutter: stable;
-  font-family: 'Inter', sans-serif;
 }
 
 @layer components {
+  /* Typography Scale - Enterprise Focused */
   .text-display-lg {
     @apply text-lg md:text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight;
   }
+
   .text-display-sm {
     @apply text-sm md:text-base font-bold tracking-tight text-slate-800 dark:text-slate-100 leading-snug;
   }
+
   .text-label-caps {
     @apply text-[9px] md:text-[10px] font-black uppercase tracking-[0.1em] text-slate-500/80 dark:text-slate-400/80;
   }
+
   .text-data-primary {
     @apply tabular-nums font-semibold tracking-tight text-slate-900 dark:text-white;
   }
+
+  .text-data-secondary {
+    @apply tabular-nums font-medium text-slate-600 dark:text-slate-300;
+  }
+
   .text-body-secondary {
     @apply text-xs md:text-sm text-slate-500 dark:text-slate-400 leading-relaxed;
+  }
+
+  /* Omie Component Classes */
+  .omie-card {
+    @apply bg-white dark:bg-slate-900 border border-[#E0E7EF] dark:border-slate-800 rounded-lg shadow-sm;
+  }
+
+  .omie-card-header {
+    @apply px-5 py-4 border-b border-[#E0E7EF] dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50 flex justify-between items-center;
+  }
+
+  .omie-btn-primary {
+    @apply px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-white bg-[#4F46E5] hover:bg-[#4338CA] rounded-md shadow-lg shadow-indigo-100 dark:shadow-none transition-all;
+  }
+
+  .omie-btn-secondary {
+    @apply px-6 py-2.5 text-[10px] font-black uppercase tracking-widest text-[#4F46E5] bg-white border border-[#E0E7EF] hover:bg-slate-50 rounded-md transition-all;
+  }
+
+  .omie-input {
+    @apply w-full px-4 py-2.5 rounded-lg border border-[#E0E7EF] dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all text-sm;
+  }
+
+  .omie-label {
+    @apply block text-[10px] font-black text-slate-400 uppercase mb-1.5 tracking-wider;
   }
 }
 
 body {
-  @apply bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100;
+  margin: 0;
+  font-family: 'Inter', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #F4F7F9;
+  color: #1A1A2E;
 }
 
-@layer utilities {
-  .bg-mesh-grid {
-    background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
-    background-size: 24px 24px;
-  }
-  .dark .bg-mesh-grid {
-    background-image: radial-gradient(#1e293b 0.5px, transparent 0.5px);
-  }
-  .transition-glass {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
+/* Omie-Style Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 
+/* Sidebar scrollbar — thinner, darker */
+.custom-scrollbar-sidebar::-webkit-scrollbar {
+  width: 3px;
+}
+.custom-scrollbar-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+.custom-scrollbar-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes portalEnter {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-portal-enter {
+  animation: portalEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Premium Mesh Grid Pattern */
+.bg-mesh-grid {
+  background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
+  background-size: 24px 24px;
+}
+
+/* ===== MODULE COLOR UTILITIES (reads --module-color CSS var from App.tsx) ===== */
+.module-accent-bg   { background-color: var(--module-color, #FF9F1C) !important; }
+.module-accent-text { color: var(--module-color, #FF9F1C) !important; }
+.module-accent-border { border-color: var(--module-color, #FF9F1C) !important; }
+.module-accent-border-b { border-bottom-color: var(--module-color, #FF9F1C) !important; }
+.module-accent-border-l { border-left-color: var(--module-color, #FF9F1C) !important; }
+.hover\:module-accent-border:hover { border-color: var(--module-color, #FF9F1C) !important; }
+.hover\:module-accent-text:hover   { color: var(--module-color, #FF9F1C) !important; }
+.focus\:module-accent-ring:focus   { --tw-ring-color: var(--module-color, #FF9F1C); }
+
+/* ===== OMIE PORTAL SYSTEM (Exact Parity it2a) ===== */
+
+.omie-topbar {
+  height: 48px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  color: white;
+  z-index: 1000;
+  position: relative;
+}
+
+.omie-module-bar {
+  height: 40px;
+  background: white;
+  border-bottom: 2px solid var(--color-omie-orange);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  z-index: 900;
+  position: relative;
+}
+
+/* Topbar brand area */
+.omie-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Topbar separator */
+.omie-topbar-sep {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.1);
+}
+
+.omie-module-tab {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--color-omie-orange);
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px 4px 0 0;
+}
+
+.omie-sidebar {
+  width: 60px !important;
+  background: var(--color-omie-sidebar);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  z-index: 500;
+  flex-shrink: 0;
+}
+
+.omie-sidebar-item {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.omie-sidebar-item:hover {
+  background: rgba(255,255,255,0.05);
+  color: white;
+}
+
+.omie-sidebar-item.active {
+  background: var(--color-omie-orange);
+  color: white;
+}
+
+.omie-btn-primary {
+  @apply px-8 py-2.5 text-[11px] font-black uppercase tracking-widest text-white bg-[#FF9F1C] hover:bg-[#f39200] rounded-full shadow-md transition-all border-none cursor-pointer;
+}
+
+.omie-btn-secondary {
+  @apply px-8 py-2.5 text-[11px] font-black uppercase tracking-widest text-[#FF9F1C] bg-white border border-[#FF9F1C] hover:bg-orange-50 rounded-full transition-all cursor-pointer;
+}
+
+.omie-input {
+  @apply w-full px-5 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-[#FF9F1C]/20 focus:border-[#FF9F1C] transition-all text-sm;
+}
+
+.omie-label {
+  @apply block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest;
+}
+
+.omie-card {
+  @apply bg-white border border-[#E0E7EF] rounded-xl shadow-sm overflow-hidden;
+}
+
+/* High-Density Omie Tables */
+.omie-table-container {
+  @apply bg-white border border-[#E0E7EF] rounded-xl overflow-hidden shadow-sm;
+}
+
+.omie-table {
+  @apply w-full text-left border-collapse;
+}
+
+.omie-table thead tr {
+  @apply bg-white border-b border-slate-100;
+}
+
+.omie-table th {
+  @apply px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap;
+}
+
+.omie-table th::before {
+  content: '« ';
+  @apply opacity-30;
+}
+
+.omie-table th::after {
+  content: ' »';
+  @apply opacity-30;
+}
+
+.omie-table tbody tr {
+  @apply border-b border-slate-50 hover:bg-slate-50/50 transition-colors;
+}
+
+.omie-table td {
+  @apply px-6 py-4 text-sm font-medium text-[#020617] tabular-nums;
+}
+
+.omie-table-summary {
+  @apply bg-slate-50/50 px-6 py-3 flex justify-end gap-10 border-t border-slate-100;
+}
+
+/* Modal Enhancements */
+.omie-modal-overlay {
+  @apply fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-[#020617]/40 backdrop-blur-sm;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.omie-modal-content {
+  @apply bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col;
+  animation: portalEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.omie-modal-header {
+  @apply p-8 border-b border-slate-100 flex justify-between items-center;
+}
+
+.omie-modal-title {
+  @apply text-2xl font-black text-[#FF9F1C] uppercase tracking-tight;
+}
+
+.omie-modal-body {
+  @apply p-10 overflow-y-auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.1) transparent;
+}
+
+.omie-modal-footer {
+  @apply p-8 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-4;
+}
 
 @media print {
   .no-print { display: none !important; }

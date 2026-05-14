@@ -1,315 +1,333 @@
 import React, { useState } from 'react';
-import { useNavigation } from '../context/NavigationContext';
-import { analyzeClinicalCase, analyzeDiagnosticImage } from '../services/vertexAiService';
+import { analyzeDiagnosticImage } from '../services/vertexAiService';
 import { apiService } from '../services/api';
-import { openWhatsApp } from '../utils/whatsappUtils';
+
+const MODULE_COLOR = '#1565C0';
+
+const IMAGE_TYPES = ['Raio-X', 'Ultrassom', 'Dermatologia', 'Microscopia', 'Oftalmologia'];
+
+const SAMPLE_CASES = [
+  { label: 'Fratura Rádio',  desc: 'Fratura completa em rádio distal, cão pequeno porte.' },
+  { label: 'Dermatite',      desc: 'Mancha circular avermelhada com bordas descamativas no dorso.' },
+  { label: 'Cistite',        desc: 'Imagem de ultrassom mostrando espessamento da parede da bexiga.' },
+  { label: 'Pneumonia',      desc: 'Opacidade alveolar em lobo cranial direito, padrão broncopneumônico.' },
+];
 
 const AdvancedAiModule: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'scribe' | 'vision' | 'history'>('scribe');
-  const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState<any[]>([]);
-  const [pets, setPets] = useState<any[]>([]);
-  const [selectedPetId, setSelectedPetId] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'vision' | 'history'>('vision');
 
-  // Load pets on mount
-  React.useEffect(() => {
-    const fetchPets = async () => {
-        try {
-            const response = await apiService.getPets();
-            const allPets = response.data;
-            setPets(allPets);
-            if (allPets.length > 0 && !selectedPetId) {
-                setSelectedPetId(allPets[0].id);
-            }
-        } catch (error) {
-            console.error('Error fetching pets:', error);
-        }
-    };
-    fetchPets();
-  }, []);
-
-  // Scribe State
-  const [rawNotes, setRawNotes] = useState('');
-  const [clinicalResult, setClinicalResult] = useState<any>(null);
-
-  // Vision State
+  // Vision state
   const [imageType, setImageType] = useState('Raio-X');
   const [imageDesc, setImageDesc] = useState('');
   const [visionResult, setVisionResult] = useState<any>(null);
-  const [saved, setSaved] = useState(false);
+  const [visionLoading, setVisionLoading] = useState(false);
+  const [visionPetId, setVisionPetId] = useState('');
+  const [visionSaved, setVisionSaved] = useState(false);
 
-  const handleScribeAnalysis = async () => {
-    if (!rawNotes) return;
-    setLoading(true);
+  // History state
+  const [pets, setPets] = useState<any[]>([]);
+  const [selectedPetId, setSelectedPetId] = useState('');
+  const [history, setHistory] = useState<any[]>([]);
+  const [histLoading, setHistLoading] = useState(false);
+  const [histLoaded, setHistLoaded] = useState(false);
+
+  // Load pets once on mount
+  React.useEffect(() => {
+    apiService.getPets().then(r => {
+      setPets(r.data);
+      if (r.data.length > 0) {
+        setSelectedPetId(r.data[0].id);
+        setVisionPetId(r.data[0].id); // default for VetVision too
+      }
+    }).catch(() => {});
+  }, []);
+
+  const handleSaveVisionRecord = async () => {
+    if (!visionResult || !visionPetId) return;
     try {
-      const selectedPet = pets.find(p => p.id.toString() === selectedPetId.toString());
-      const petDetails = selectedPet ? {
-        species: selectedPet.species,
-        breed: selectedPet.breed,
-        age: selectedPet.age, // Assuming age is available or calculated
-        name: selectedPet.name
-      } : { species: 'Desconhecido', breed: 'Desconhecido', age: 0, name: 'Desconhecido' };
-
-      // Simple history summary from loaded history
-      const historySummary = history.length > 0 
-        ? `Histórico recente: ${history.slice(0, 3).map(h => h.diagnosis).join(', ')}`
-        : 'Sem histórico recente.';
-
-      const result = await analyzeClinicalCase(
-        rawNotes, 
-        petDetails,
-        historySummary
-      );
-      setClinicalResult(result);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
+      await apiService.createMedicalRecord({
+        pet_id: visionPetId,
+        vet_id: '1',
+        date: new Date().toISOString().split('T')[0],
+        soap_s: `Análise de imagem solicitada: ${imageType}`,
+        soap_o: imageDesc,
+        soap_a: visionResult.diagnosis?.[0] || 'Achado imaging',
+        soap_p: visionResult.recommendation || 'Ver laudo completo',
+        diagnosis: visionResult.diagnosis?.[0] || 'Diagnóstico por imagem',
+        notes: `[VetVision] ${imageType} | Confiança: ${visionResult.confidence} | Achados: ${visionResult.technical_findings}`,
+      });
+      setVisionSaved(true);
+      setTimeout(() => setVisionSaved(false), 4000);
+    } catch {
+      alert('Erro ao registrar no prontuário.');
     }
   };
 
   const handleVisionAnalysis = async () => {
     if (!imageDesc) return;
-    setLoading(true);
+    setVisionLoading(true);
+    setVisionResult(null);
     try {
       const result = await analyzeDiagnosticImage(imageType, imageDesc);
       setVisionResult(result);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+    } catch { /* fallback handled inside service */ }
+    finally { setVisionLoading(false); }
   };
 
-  const handleSaveRecord = async () => {
-    if (!clinicalResult) return;
-    
-    // Saving to Database via API
+  const loadHistory = async (petId?: string) => {
+    const id = petId || selectedPetId;
+    if (!id) return;
+    setHistLoading(true);
     try {
-        await apiService.createMedicalRecord({
-            pet_id: selectedPetId, 
-            vet_id: '1', // Hardcoded current user for now
-            date: new Date().toISOString().split('T')[0],
-            soap_s: clinicalResult.structured_soap.s,
-            soap_o: clinicalResult.structured_soap.o,
-            soap_a: clinicalResult.structured_soap.a,
-            soap_p: clinicalResult.structured_soap.p,
-            diagnosis: clinicalResult.structured_soap.a.split('.')[0], 
-            notes: 'Gerado via VetSmart AI'
-        });
-        
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
-    } catch (error) {
-        console.error('Error saving record:', error);
-        alert('Erro ao salvar prontuário.');
-    }
-  };
-
-  const loadHistory = async () => {
-      if (!selectedPetId) return;
-      console.log(`Loading history for pet ${selectedPetId}...`);
-      try {
-        const response = await apiService.getMedicalRecords(selectedPetId);
-        console.log('Records loaded:', response.data);
-        setHistory(response.data);
-      } catch (e) {
-        console.error('Error loading history', e);
-      }
+      const r = await apiService.getMedicalRecords(id);
+      setHistory(r.data || []);
+      setHistLoaded(true);
+    } catch { setHistory([]); setHistLoaded(true); }
+    finally { setHistLoading(false); }
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <header className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl xl:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-            VetSmart AI Copilot <span className="text-[10px] xl:text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-2 align-middle">BETA</span>
-          </h1>
-          <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 mt-1">Assistente avançado para documentação clínica e diagnóstico por imagem.</p>
-          
-          <div className="mt-4 flex items-center gap-2">
-            <label className="text-sm font-bold text-slate-600 dark:text-slate-300">Paciente Atual:</label>
-            <select 
-                value={selectedPetId}
-                onChange={(e) => {
-                    setSelectedPetId(e.target.value);
-                    if (activeTab === 'history') {
-                        // Small delay to allow state to update before reload (or use useEffect)
-                        setTimeout(() => loadHistory(), 100); 
-                    }
-                }}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-                {pets.map(pet => (
-                    <option key={pet.id} value={pet.id}>{pet.name} ({pet.species})</option>
-                ))}
-            </select>
-          </div>
-        </div>
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-          <button 
-            onClick={() => setActiveTab('scribe')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'scribe' ? 'bg-white dark:bg-slate-700 shadow text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            <i className="fas fa-microphone-alt mr-2"></i> Smart Scribe
-          </button>
-          <button 
-            onClick={() => setActiveTab('vision')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'vision' ? 'bg-white dark:bg-slate-700 shadow text-purple-600 dark:text-purple-400' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            <i className="fas fa-eye mr-2"></i> Vet Vision
-          </button>
-          <button 
-            onClick={() => { setActiveTab('history'); loadHistory(); }}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-white dark:bg-slate-700 shadow text-emerald-600 dark:text-emerald-400' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            <i className="fas fa-history mr-2"></i> Histórico
-          </button>
-        </div>
-      </header>
+    <div className="flex flex-col gap-6 animate-portal-enter pb-10">
 
-      {/* SCRIBE MODE */}
-      {activeTab === 'scribe' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Input Column */}
-          <div className="lg:col-span-1 space-y-4">
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 h-full">
-              <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                <i className="fas fa-pen-to-square text-blue-500"></i> Notas da Consulta
+      {/* Header */}
+      <div className="flex justify-between items-end mb-2">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+            Inteligência Clínica
+          </h1>
+          <p className="text-2xl font-black text-[#020617] uppercase tracking-tight">
+            IA & Imagem
+          </p>
+        </div>
+        <span className="text-[9px] font-black px-3 py-1.5 rounded-full border uppercase tracking-widest"
+          style={{ color: MODULE_COLOR, borderColor: MODULE_COLOR + '40', background: MODULE_COLOR + '08' }}>
+          <i className="fas fa-robot mr-1" />VetGrid AI BETA
+        </span>
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex border-b border-slate-100 -mt-2">
+        {([
+          { id: 'vision',  label: 'VetVision — Análise de Imagem', icon: 'fa-eye' },
+          { id: 'history', label: 'Histórico de Prontuários',       icon: 'fa-history' },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => { setActiveTab(tab.id); if (tab.id === 'history' && !histLoaded) loadHistory(); }}
+            className={`flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
+              activeTab === tab.id
+                ? 'border-[#1565C0] text-[#1565C0]'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <i className={`fas ${tab.icon} text-[10px]`} />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── VETVISION ── */}
+      {activeTab === 'vision' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+          {/* Input panel */}
+          <div className="omie-card bg-white p-8 flex flex-col gap-6">
+
+            {/* Pet selector — REQUIRED for record linkage */}
+            <div className="p-4 rounded-xl border-2 flex items-center gap-4"
+              style={{ borderColor: MODULE_COLOR + '30', background: MODULE_COLOR + '06' }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: MODULE_COLOR + '15' }}>
+                <i className="fas fa-paw" style={{ color: MODULE_COLOR }} />
+              </div>
+              <div className="flex flex-col gap-1 flex-1">
+                <label className="text-[8px] font-black uppercase tracking-widest" style={{ color: MODULE_COLOR }}>
+                  Paciente vinculado ao exame
+                </label>
+                <select
+                  value={visionPetId}
+                  onChange={e => { setVisionPetId(e.target.value); setVisionSaved(false); }}
+                  className="text-[12px] font-black text-[#020617] bg-transparent border-none outline-none cursor-pointer"
+                >
+                  {pets.length === 0 && <option value="">Carregando pacientes...</option>}
+                  {pets.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} — {p.species}</option>
+                  ))}
+                </select>
+              </div>
+              <i className="fas fa-chevron-down text-[10px] text-slate-300 shrink-0" />
+            </div>
+
+            <div>
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-[#020617] mb-4 flex items-center gap-2">
+                <i className="fas fa-layer-group text-[#1565C0]" />
+                Modalidade de Imagem
               </h3>
-              <p className="text-xs text-slate-500 mb-3">Digite ou dite as observações soltas. A IA estruturará tudo.</p>
-              <textarea 
-                className="w-full h-64 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-none focus:ring-2 focus:ring-blue-500 text-sm resize-none mb-4"
-                placeholder="Ex: Thor, 5 anos, vômito amarelo hoje cedo. Comeu grama. Temp 39. Abdomen tenso. Vou pedir ultrassom e hemograma. Receitar Plasil e Omeprazol..."
-                value={rawNotes}
-                onChange={(e) => setRawNotes(e.target.value)}
+              <div className="flex flex-wrap gap-2">
+                {IMAGE_TYPES.map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setImageType(type)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${
+                      imageType === type
+                        ? 'border-[#1565C0] text-[#1565C0] bg-[#1565C008]'
+                        : 'border-slate-200 text-slate-400 hover:border-slate-300'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Drop zone */}
+            <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:border-[#1565C0]/40 hover:bg-[#1565C008] transition-all cursor-pointer group">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 transition-transform group-hover:scale-110"
+                style={{ background: MODULE_COLOR + '15' }}>
+                <i className="fas fa-cloud-upload-alt text-2xl" style={{ color: MODULE_COLOR }} />
+              </div>
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">Arraste a imagem aqui</p>
+              <p className="text-[9px] font-bold text-slate-300 mt-1 uppercase tracking-widest">DICOM • JPEG • PNG (Simulado)</p>
+            </div>
+
+            {/* Description */}
+            <div className="flex flex-col gap-3">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                Descrição / Contexto para IA
+              </label>
+              <textarea
+                rows={4}
+                value={imageDesc}
+                onChange={e => setImageDesc(e.target.value)}
+                placeholder="Descreva o que você observa ou selecione um caso de teste..."
+                className="w-full omie-input !py-3 !text-sm !leading-relaxed resize-none !bg-white"
               />
-              <button 
-                onClick={handleScribeAnalysis}
-                disabled={loading || !rawNotes}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              {/* Sample cases */}
+              <div className="flex flex-wrap gap-2">
+                {SAMPLE_CASES.map(c => (
+                  <button
+                    key={c.label}
+                    onClick={() => setImageDesc(c.desc)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-100 border border-slate-100 transition-all"
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleVisionAnalysis}
+                disabled={visionLoading || !imageDesc}
+                className="omie-btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 !py-3"
+                style={{ background: MODULE_COLOR }}
               >
-                {loading ? (
-                  <><i className="fas fa-circle-notch fa-spin"></i> Processando...</>
-                ) : (
-                  <><i className="fas fa-wand-magic-sparkles"></i> Gerar Prontuário</>
-                )}
+                {visionLoading
+                  ? <><i className="fas fa-circle-notch fa-spin" /> Analisando pixels...</>
+                  : <><i className="fas fa-microscope" /> Iniciar Análise VetVision</>
+                }
               </button>
             </div>
           </div>
 
-          {/* Output Column */}
-          <div className="lg:col-span-2 space-y-6">
-            {!clinicalResult && !loading && (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-12 relative">
-                <i className="fas fa-file-medical text-6xl mb-4 opacity-20"></i>
-                <p className="font-medium">O prontuário estruturado aparecerá aqui.</p>
-                <p className="text-xs mt-2 opacity-60 max-w-48 text-center">Após gerar, você poderá salvar no histórico do paciente.</p>
-                
-                {/* Placeholder Save Button to show feature existence */}
-                <button disabled className="mt-6 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-lg text-sm font-bold cursor-not-allowed flex items-center gap-2">
-                    <i className="fas fa-save"></i> Salvar no Prontuário
-                </button>
+          {/* Output panel */}
+          <div>
+            {!visionResult && !visionLoading && (
+              <div className="omie-card bg-white h-full flex flex-col items-center justify-center p-12 text-center">
+                <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-5"
+                  style={{ background: MODULE_COLOR + '10' }}>
+                  <i className="fas fa-microscope text-3xl" style={{ color: MODULE_COLOR + '40' }} />
+                </div>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Aguardando Imagem</p>
+                <p className="text-[10px] text-slate-300 font-bold mt-2 max-w-48">
+                  Descreva o caso e clique em "Iniciar Análise" para ver os resultados.
+                </p>
               </div>
             )}
 
-            {loading && !clinicalResult && (
-               <div className="space-y-4 animate-pulse">
-                 <div className="h-40 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>
-                 <div className="h-40 bg-slate-200 dark:bg-slate-800 rounded-2xl"></div>
-               </div>
+            {visionLoading && (
+              <div className="omie-card bg-white h-full flex flex-col items-center justify-center gap-5 p-12">
+                <div className="w-16 h-16 border-4 border-slate-100 rounded-full animate-spin"
+                  style={{ borderTopColor: MODULE_COLOR }} />
+                <p className="text-[11px] font-black uppercase tracking-widest animate-pulse" style={{ color: MODULE_COLOR }}>
+                  Processando na Vertex AI...
+                </p>
+              </div>
             )}
 
-            {clinicalResult && (
-              <div className="animate-fade-in space-y-6">
-                {/* SOAP Card */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 px-6 py-3 border-b border-blue-100 dark:border-blue-800 flex justify-between items-center">
-                    <h4 className="font-bold text-blue-700 dark:text-blue-300">SOAP Estruturado</h4>
-                    <div className="flex items-center gap-3">
-                        <span className="text-xs bg-white dark:bg-slate-800 px-2 py-1 rounded text-blue-600 font-mono">CONFIDENCE: HIGH</span>
-                        <button 
-                            onClick={handleSaveRecord}
-                            disabled={saved}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${saved ? 'bg-green-500 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
-                        >
-                            {saved ? (
-                                <><i className="fas fa-check"></i> Salvo!</>
-                            ) : (
-                                <><i className="fas fa-save"></i> Salvar no Prontuário</>
-                            )}
-                        </button>
+            {visionResult && (
+              <div className="flex flex-col gap-5">
+                {/* Main finding */}
+                <div className="omie-card bg-white p-6 border-l-4" style={{ borderLeftColor: MODULE_COLOR }}>
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h2 className="text-lg font-black text-[#020617] uppercase tracking-tight">
+                        {visionResult.diagnosis?.[0] || 'Achado Principal'}
+                      </h2>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                        Confiança: <span className="font-black" style={{ color: MODULE_COLOR }}>{visionResult.confidence}</span>
+                      </p>
                     </div>
+                    <span className={`text-[9px] px-3 py-1.5 rounded-full font-black uppercase tracking-widest ${
+                      (visionResult.urgency_score || 0) >= 7
+                        ? 'bg-red-50 text-red-500 border border-red-100'
+                        : 'bg-amber-50 text-amber-500 border border-amber-100'
+                    }`}>
+                      Urgência: {visionResult.urgency_score}/10
+                    </span>
                   </div>
-                  <div className="p-6 grid grid-cols-2 gap-6">
-                    <div>
-                      <span className="text-xs font-bold text-slate-400 uppercase">Subjetivo</span>
-                      <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{clinicalResult.structured_soap.s}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-400 uppercase">Objetivo</span>
-                      <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{clinicalResult.structured_soap.o}</p>
-                    </div>
-                    <div className="col-span-2 h-px bg-slate-100 dark:bg-slate-800"></div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-400 uppercase">Avaliação</span>
-                      <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{clinicalResult.structured_soap.a}</p>
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-400 uppercase">Plano</span>
-                      <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{clinicalResult.structured_soap.p}</p>
+
+                  <div className="mb-4">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-2">Achados Técnicos</p>
+                    <p className="text-[12px] text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl">
+                      {visionResult.technical_findings}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-2">Recomendação Clínica</p>
+                    <div className="flex items-start gap-3">
+                      <i className="fas fa-user-md mt-0.5" style={{ color: MODULE_COLOR }} />
+                      <p className="text-[12px] font-bold text-slate-700">{visionResult.recommendation}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Billing Suggestions */}
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-6">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                            <i className="fas fa-file-invoice-dollar text-emerald-500"></i> Sugestão de Faturamento
-                        </h4>
-                        <ul className="space-y-3">
-                            {clinicalResult.suggested_billing?.map((item: any, idx: number) => (
-                                <li key={idx} className="flex justify-between items-center text-sm p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                    <span className="text-slate-700 dark:text-slate-300">{item.item}</span>
-                                    {item.reason && <span className="text-[10px] text-slate-400 max-w-24 truncate" title={item.reason}>{item.reason}</span>}
-                                    <i className="fas fa-check-circle text-emerald-500"></i>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    {/* Owner Instructions */}
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 relative">
-                        <div className="flex justify-between items-center mb-4">
-                            <h4 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                <i className="fab fa-whatsapp text-green-500"></i> Instruções ao Tutor
-                            </h4>
-                            <div className="flex gap-2">
-                                <button 
-                                    onClick={() => {
-                                        const text = clinicalResult.owner_instructions?.whatsapp_format || clinicalResult.owner_instructions?.text;
-                                        navigator.clipboard.writeText(text);
-                                    }}
-                                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg font-bold transition-colors"
-                                >
-                                    <i className="fas fa-copy mr-1"></i> Copiar
-                                </button>
-                                <button 
-                                    onClick={() => {
-                                        const text = clinicalResult.owner_instructions?.whatsapp_format || clinicalResult.owner_instructions?.text;
-                                        openWhatsApp('5511999999999', text); // Mock phone for demo
-                                    }}
-                                    className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold transition-colors"
-                                >
-                                    <i className="fas fa-paper-plane mr-1"></i> Enviar
-                                </button>
-                            </div>
-                        </div>
-                        <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-xl text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-sans border border-green-100 dark:border-green-800/30">
-                            {clinicalResult.owner_instructions?.whatsapp_format || clinicalResult.owner_instructions?.text}
-                        </div>
-                    </div>
+                {/* Heatmap placeholder */}
+                <div className="omie-card bg-[#020617] p-0 overflow-hidden relative">
+                  <div className="h-40 flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Visualização da Imagem Original</span>
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white">
+                      <i className="fas fa-layer-group mr-2" />Camada de Detecção Ativa
+                    </p>
+                    <p className="text-[9px] text-white/50 font-bold mt-0.5">Áreas de interesse destacadas automaticamente.</p>
+                  </div>
+                </div>
+                {/* Register in prontuário */}
+                <div className="omie-card bg-white p-5 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">
+                      Registrar no Prontuário
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-bold">
+                      {pets.find(p => p.id.toString() === visionPetId.toString())?.name || 'Paciente'}
+                      {' — '}{new Date().toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleSaveVisionRecord}
+                    disabled={visionSaved}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${
+                      visionSaved
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                        : 'text-white'
+                    }`}
+                    style={visionSaved ? {} : { background: MODULE_COLOR }}
+                  >
+                    <i className={`fas ${visionSaved ? 'fa-check' : 'fa-file-medical'}`} />
+                    {visionSaved ? 'Registrado no Prontuário!' : 'Registrar no Prontuário'}
+                  </button>
                 </div>
               </div>
             )}
@@ -317,171 +335,103 @@ const AdvancedAiModule: React.FC = () => {
         </div>
       )}
 
-      {/* VISION MODE */}
-      {activeTab === 'vision' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-                <h3 className="font-bold text-xl text-slate-800 dark:text-slate-100 mb-6">Upload de Imagem Diagnóstica</h3>
-                
-                <div className="mb-6">
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Modalidade</label>
-                    <div className="flex gap-3">
-                        {['Raio-X', 'Ultrassom', 'Dermatologia', 'Microscopia'].map(type => (
-                            <button 
-                                key={type}
-                                onClick={() => setImageType(type)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium border ${imageType === type ? 'bg-purple-100 border-purple-500 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}
-                            >
-                                {type}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 text-center bg-slate-50 dark:bg-slate-800/50 mb-6 group cursor-pointer hover:border-purple-400 transition-colors">
-                    <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                        <i className="fas fa-cloud-upload-alt text-2xl"></i>
-                    </div>
-                    <p className="font-bold text-slate-700 dark:text-slate-200">Arraste sua imagem aqui</p>
-                    <p className="text-xs text-slate-500 mt-2">DICOM, JPEG, PNG (Simulado)</p>
-                </div>
-
-                <div className="space-y-4">
-                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Descrição do Caso (Contexto para IA)</label>
-                     <textarea 
-                        className="w-full h-32 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-none focus:ring-2 focus:ring-purple-500 text-sm resize-none"
-                        placeholder="Descreva o que você vê ou selecione um caso de teste..."
-                        value={imageDesc}
-                        onChange={(e) => setImageDesc(e.target.value)}
-                     />
-                     
-                     <div className="flex gap-2 overflow-x-auto pb-2">
-                        <button onClick={() => setImageDesc("Fratura completa em rádio distal, cão pequeno porte.")} className="whitespace-nowrap px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs text-slate-600 hover:bg-slate-200">Teste: Fratura</button>
-                        <button onClick={() => setImageDesc("Mancha circular avermelhada com bordas descamativas no dorso.")} className="whitespace-nowrap px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs text-slate-600 hover:bg-slate-200">Teste: Dermato</button>
-                        <button onClick={() => setImageDesc("Imagem de ultrassom mostrando espessamento da parede da bexiga.")} className="whitespace-nowrap px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs text-slate-600 hover:bg-slate-200">Teste: Cistite</button>
-                     </div>
-
-                     <button 
-                        onClick={handleVisionAnalysis}
-                        disabled={loading || !imageDesc}
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                        {loading ? 'Analisando Pixels...' : 'Iniciar Análise VetVision'}
-                    </button>
-                </div>
-            </div>
-
-            <div className="space-y-6">
-                {!visionResult && !loading && (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-12">
-                         <i className="fas fa-microscope text-6xl mb-4 opacity-20"></i>
-                         <p>Os resultados da análise aparecerão aqui.</p>
-                    </div>
-                )}
-                
-                {loading && !visionResult && (
-                    <div className="h-full flex flex-col items-center justify-center space-y-4">
-                        <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
-                        <p className="text-purple-600 font-bold animate-pulse">Processando imagem na Vertex AI...</p>
-                    </div>
-                )}
-
-                {visionResult && (
-                    <div className="animate-fade-in space-y-6">
-                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-lg border-l-4 border-purple-500">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{visionResult.diagnosis?.[0]}</h2>
-                                    <p className="text-sm text-slate-500">Confiança da IA: <span className="font-bold text-purple-600">{visionResult.confidence}</span></p>
-                                </div>
-                                <div className={`px-3 py-1 rounded-lg text-xs font-bold uppercase ${visionResult.urgency_score >= 7 ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}>
-                                    Urgência: {visionResult.urgency_score}/10
-                                </div>
-                            </div>
-                            
-                            <div className="mb-6">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">Achados Técnicos</h4>
-                                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
-                                    {visionResult.technical_findings}
-                                </p>
-                            </div>
-
-                            <div>
-                                <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">Recomendação Clínica</h4>
-                                <div className="flex items-start gap-3">
-                                    <i className="fas fa-user-md text-purple-500 mt-1"></i>
-                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{visionResult.recommendation}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Simulated Heatmap / Overlay */}
-                        <div className="relative rounded-2xl overflow-hidden shadow-lg group">
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
-                            <div className="bg-slate-800 h-64 w-full flex items-center justify-center text-slate-500">
-                                <span className="text-xs">[Visualização da Imagem Original]</span>
-                            </div>
-                            <div className="absolute bottom-0 left-0 right-0 p-6 z-20 text-white">
-                                <p className="font-bold text-sm"><i className="fas fa-layer-group mr-2"></i>Camada de Detecção Ativa</p>
-                                <p className="text-xs opacity-80">Áreas de interesse destacadas automaticamente.</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-      )}
-
-      {/* HISTORY MODE */}
+      {/* ── HISTÓRICO ── */}
       {activeTab === 'history' && (
-        <div className="space-y-6">
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-                    <i className="fas fa-history text-emerald-500"></i> Prontuário de {pets.find(p => p.id === selectedPetId)?.name || 'Paciente'} (Histórico)
-                </h3>
-                <div className="space-y-4">
-                    {history.length === 0 ? (
-                        <div className="text-center py-12 text-slate-400">
-                            <i className="fas fa-folder-open text-4xl mb-3 opacity-20"></i>
-                            <p className="text-sm">Nenhum registro encontrado.</p>
-                        </div>
-                    ) : (
-                        history.map((record, idx) => (
-                            <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm">
-                                            {record.date ? new Date(record.date).getDate() : 'H'}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-700 dark:text-slate-200">{record.diagnosis || 'Consulta de Rotina'}</h4>
-                                            <p className="text-xs text-slate-500">{record.date ? new Date(record.date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : 'Data N/A'} • {record.vetName}</p>
-                                        </div>
-                                    </div>
-                                    <span className={`text-xs px-2 py-1 rounded font-bold uppercase ${record.urgency === 'Urgente' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                                        {record.urgency || 'Rotina'}
-                                    </span>
-                                </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-4">
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Subjetivo & Objetivo</p>
-                                        <p className="text-slate-600 dark:text-slate-300 line-clamp-2">{record.subjective} {record.objective}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Avaliação & Plano</p>
-                                        <p className="text-slate-600 dark:text-slate-300 line-clamp-2">{record.assessment} {record.plan}</p>
-                                    </div>
-                                </div>
-                                
-                                <button className="mt-4 w-full py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                                    Ver Detalhes Completos
-                                </button>
-                            </div>
-                        ))
-                    )}
-                </div>
+        <div className="flex flex-col gap-6">
+          {/* Pet selector */}
+          <div className="omie-card bg-white p-5 flex items-center gap-5">
+            <i className="fas fa-paw text-slate-300 text-lg" />
+            <div className="flex flex-col gap-1 flex-1">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Paciente</label>
+              <select
+                value={selectedPetId}
+                onChange={e => {
+                  setSelectedPetId(e.target.value);
+                  setHistLoaded(false);
+                  loadHistory(e.target.value);
+                }}
+                className="omie-input !py-2 !text-sm bg-white"
+              >
+                {pets.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.species})</option>
+                ))}
+              </select>
             </div>
+            <button
+              onClick={() => loadHistory()}
+              disabled={histLoading}
+              className="omie-btn-primary flex items-center gap-2 shrink-0"
+              style={{ background: MODULE_COLOR }}
+            >
+              {histLoading
+                ? <><i className="fas fa-circle-notch fa-spin" />Carregando...</>
+                : <><i className="fas fa-sync" />Atualizar</>
+              }
+            </button>
+          </div>
+
+          {/* Records */}
+          {histLoading && (
+            <div className="text-center py-16 text-[11px] font-black uppercase tracking-widest text-slate-400 animate-pulse">
+              Carregando prontuários...
+            </div>
+          )}
+
+          {histLoaded && history.length === 0 && (
+            <div className="omie-card bg-white flex flex-col items-center justify-center py-16 text-center">
+              <i className="fas fa-folder-open text-4xl text-slate-100 mb-4" />
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Nenhum prontuário encontrado</p>
+              <p className="text-[10px] text-slate-300 font-bold mt-1">Realize um atendimento para gerar o primeiro registro.</p>
+            </div>
+          )}
+
+          {history.length > 0 && (
+            <div className="flex flex-col gap-4">
+              {history.map((record: any, idx: number) => (
+                <div key={idx} className="omie-card bg-white p-6 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-sm shrink-0"
+                        style={{ background: MODULE_COLOR }}>
+                        {record.date ? new Date(record.date).getDate() : 'H'}
+                      </div>
+                      <div>
+                        <h4 className="text-[13px] font-black text-[#020617] uppercase tracking-tight">
+                          {record.diagnosis || 'Consulta de Rotina'}
+                        </h4>
+                        <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                          {record.date
+                            ? new Date(record.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+                            : 'Data N/A'
+                          }
+                          {record.vetName && <span className="ml-2">• {record.vetName}</span>}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest ${
+                      record.urgency === 'Urgente'
+                        ? 'bg-red-50 text-red-500 border border-red-100'
+                        : 'bg-slate-50 text-slate-400 border border-slate-100'
+                    }`}>
+                      {record.urgency || 'Rotina'}
+                    </span>
+                  </div>
+
+                  {/* SOAP summary */}
+                  <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-slate-300 mb-1">Subjetivo / Objetivo</p>
+                      <p className="text-[11px] text-slate-600 line-clamp-2">{record.subjective || record.soap_s} {record.objective || record.soap_o}</p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-slate-300 mb-1">Avaliação / Plano</p>
+                      <p className="text-[11px] text-slate-600 line-clamp-2">{record.assessment || record.soap_a} {record.plan || record.soap_p}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

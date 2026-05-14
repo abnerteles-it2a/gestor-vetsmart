@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   BarChart,
@@ -8,17 +9,36 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell
 } from 'recharts';
 
 import { apiService } from '../services/api';
+import { KpiCard } from './KpiCard';
+
+const MODULE_COLOR = '#2E7D32';
 
 const FinancialModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'cashflow' | 'dre' | 'commissions'>('cashflow');
+
+  const handleTabChange = (tab: 'cashflow' | 'dre' | 'commissions') => {
+    setActiveTab(tab);
+    const labels: Record<string, string> = {
+      cashflow: 'Fluxo de Caixa',
+      dre: 'DRE Gerencial',
+      commissions: 'Comissões',
+    };
+    if ((window as any).__setModuleBreadcrumb) {
+      (window as any).__setModuleBreadcrumb(labels[tab]);
+    }
+  };
+
+  React.useEffect(() => {
+    if ((window as any).__setModuleBreadcrumb) {
+      (window as any).__setModuleBreadcrumb('Fluxo de Caixa');
+    }
+  }, []);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const [aiInsights, setAiInsights] = useState<any>(null);
   
@@ -34,8 +54,6 @@ const FinancialModule: React.FC = () => {
         const response = await apiService.getFinancialDashboard();
         const { cashFlow, dre, commissions } = response.data;
         
-        // Transform backend keys to match chart expectations if needed
-        // Backend returns "entradas" and "saidas" as strings (decimal), need parsing
         const formattedCashFlow = cashFlow.map((item: any) => ({
             name: item.name,
             entradas: parseFloat(item.entradas),
@@ -66,212 +84,217 @@ const FinancialModule: React.FC = () => {
       setAiInsights(response.data);
     } catch (error) {
       console.error('Error fetching AI insights:', error);
-      // Fallback mock for demo if API fails
-      setAiInsights({
-        insights: ["Aumento de 15% nas receitas.", "Custos operacionais estáveis."],
-        recommendations: ["Investir em marketing.", "Renegociar fornecedores."]
-      });
     } finally {
       setIsAiAnalyzing(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Gestão Financeira Inteligente</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300">Controle total do fluxo de caixa e resultados da clínica.</p>
+    <div className="flex flex-col gap-6 animate-portal-enter pb-10">
+      
+      {/* Module Header */}
+      <div className="flex justify-between items-end mb-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Controladoria & Finanças</h1>
+          <p className="text-2xl font-black text-[#020617] uppercase tracking-tight">Fluxo de Caixa & Resultados</p>
         </div>
-        <button 
-          onClick={handleAiAnalysis}
-          className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-semibold shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all flex items-center gap-2"
-        >
-          <i className={`fas ${isAiAnalyzing ? 'fa-spinner fa-spin' : 'fa-robot'}`}></i> 
-          {isAiAnalyzing ? 'Analisando...' : 'CFO Virtual (IA)'}
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={handleAiAnalysis}
+            className="omie-btn-primary !bg-[#020617] !text-white border-none flex items-center gap-3 px-8 shadow-2xl shadow-indigo-500/20"
+          >
+            <i className={`fas ${isAiAnalyzing ? 'fa-circle-notch fa-spin' : 'fa-wand-magic-sparkles'} text-[#FF9F1C]`}></i> 
+            <span className="uppercase tracking-widest text-[11px] font-black">{isAiAnalyzing ? 'Processando...' : 'Análise Preditiva IA'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* AI Insights Card */}
-      {(aiInsights || isAiAnalyzing) && (
-      <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-2xl p-6 relative overflow-hidden transition-all duration-500">
-        <div className="absolute top-0 right-0 p-4 opacity-10">
-            <i className="fas fa-brain text-9xl text-indigo-600 dark:text-indigo-400"></i>
-        </div>
-        <div className="relative z-10">
-            <h4 className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-2 mb-2">
-                <i className="fas fa-lightbulb text-yellow-500"></i> Insights do CFO Virtual
-            </h4>
-            {isAiAnalyzing ? (
-                <p className="text-indigo-800 dark:text-indigo-200 animate-pulse">Analisando dados financeiros...</p>
-            ) : (
-                <div className="text-sm text-indigo-800 dark:text-indigo-200 max-w-3xl space-y-2">
-                    {aiInsights?.insights?.map((insight: string, idx: number) => (
-                        <p key={idx}><i className="fas fa-check-circle mr-2 text-indigo-500"></i>{insight}</p>
-                    ))}
-                    {aiInsights?.recommendations?.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-indigo-200 dark:border-indigo-700">
-                            <p className="font-bold mb-1">Recomendações:</p>
-                            {aiInsights.recommendations.map((rec: string, idx: number) => (
-                                <p key={idx} className="pl-4 border-l-2 border-indigo-400 mb-1">{rec}</p>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+      {/* Control Tabs */}
+      <div className="omie-card p-1 flex bg-white border-none shadow-sm">
+         {[
+           { id: 'cashflow', label: 'Fluxo de Caixa', icon: 'fa-chart-line' },
+           { id: 'dre', label: 'DRE Gerencial', icon: 'fa-file-invoice-dollar' },
+           { id: 'commissions', label: 'Comissões', icon: 'fa-user-md' }
+         ].map(tab => (
+           <button
+             key={tab.id}
+             onClick={() => handleTabChange(tab.id as any)}
+             className={`flex-1 py-3.5 rounded-lg flex items-center justify-center gap-3 transition-all ${
+               activeTab === tab.id 
+                 ? 'text-white shadow-lg' 
+                 : 'text-slate-400 hover:text-slate-600'
+             }`}
+             style={activeTab === tab.id ? { background: MODULE_COLOR } : {}}
+           >
+             <i className={`fas ${tab.icon} text-sm`}></i>
+             <span className="text-[11px] font-black uppercase tracking-widest">{tab.label}</span>
+           </button>
+         ))}
       </div>
+
+      {/* AI Dashboard Section */}
+      {aiInsights && (
+        <div className="omie-card bg-[#FF9F1C] p-10 border-none relative overflow-hidden shadow-2xl">
+           <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-32 -mt-32 blur-[100px]"></div>
+           <div className="relative z-10 grid grid-cols-12 gap-8 items-center">
+              <div className="col-span-1 flex justify-center">
+                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-[#FF9F1C] text-3xl shadow-xl">
+                    <i className="fas fa-lightbulb"></i>
+                 </div>
+              </div>
+              <div className="col-span-11">
+                 <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#020617] mb-4">it2a Financial Insights</h4>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-3">
+                       <p className="text-[10px] font-black uppercase tracking-widest text-[#020617]/40">Análise de Performance</p>
+                       {aiInsights?.insights?.map((ins: string, i: number) => (
+                         <p key={i} className="text-sm font-bold text-[#020617] leading-relaxed flex items-start gap-3">
+                            <i className="fas fa-check-circle mt-1 opacity-40"></i>
+                            {ins}
+                         </p>
+                       ))}
+                    </div>
+                    <div className="space-y-3">
+                       <p className="text-[10px] font-black uppercase tracking-widest text-[#020617]/40">Plano de Ação</p>
+                       {aiInsights?.recommendations?.map((rec: string, i: number) => (
+                         <p key={i} className="text-sm font-bold text-[#020617] leading-relaxed flex items-start gap-3">
+                            <i className="fas fa-arrow-right mt-1 opacity-40"></i>
+                            {rec}
+                         </p>
+                       ))}
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </div>
       )}
 
-      {/* Tabs */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-100 dark:border-slate-800 overflow-x-auto">
-            <button 
-                onClick={() => setActiveTab('cashflow')}
-                className={`px-6 py-4 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'cashflow' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-            >
-                <i className="fas fa-chart-line"></i> Fluxo de Caixa
-            </button>
-            <button 
-                onClick={() => setActiveTab('dre')}
-                className={`px-6 py-4 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'dre' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-            >
-                <i className="fas fa-file-invoice-dollar"></i> DRE Gerencial
-            </button>
-            <button 
-                onClick={() => setActiveTab('commissions')}
-                className={`px-6 py-4 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'commissions' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-            >
-                <i className="fas fa-user-md"></i> Comissões
-            </button>
-        </div>
+      {/* Content Area */}
+      <div className="omie-card p-10 bg-white min-h-[500px]">
 
-        <div className="p-6">
-            {activeTab === 'cashflow' && (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800">
-                            <p className="text-xs text-green-600 dark:text-green-400 font-bold uppercase">Entradas (Hoje)</p>
-                            <p className="text-2xl font-bold text-green-700 dark:text-green-300 mt-1">R$ 4.250,00</p>
-                        </div>
-                        <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800">
-                            <p className="text-xs text-red-600 dark:text-red-400 font-bold uppercase">Saídas (Hoje)</p>
-                            <p className="text-2xl font-bold text-red-700 dark:text-red-300 mt-1">R$ 1.890,00</p>
-                        </div>
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
-                            <p className="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase">Saldo Previsto</p>
-                            <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 mt-1">R$ 12.450,00</p>
-                        </div>
-                    </div>
+         {activeTab === 'cashflow' && (
+           <div className="space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                 <KpiCard 
+                    title="Entradas (30 dias)" 
+                    value="R$ 142.450,00"
+                    icon={<i className="fas fa-arrow-trend-up"></i>}
+                    color="#10B981"
+                 />
+                 <KpiCard 
+                    title="Saídas (30 dias)" 
+                    value="R$ 84.120,00"
+                    icon={<i className="fas fa-arrow-trend-down"></i>}
+                    color="#EF4444"
+                 />
+                 <div className="omie-card !p-5 bg-[#020617] border-none flex flex-col justify-center gap-1 text-white shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF9F1C]/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-1 z-10">Saldo Projetado it2a</span>
+                    <span className="text-2xl font-black text-[#FF9F1C] tracking-tighter uppercase z-10">R$ 58.330,00</span>
+                 </div>
+              </div>
 
-                    <div className="h-72 w-full">
-                        <ResponsiveContainer width="100%" height="100%" minHeight={288}>
-                            <BarChart data={dataCashFlow}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                                <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                                <YAxis stroke="#64748b" fontSize={12} />
-                                <Tooltip 
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                />
-                                <Legend />
-                                <Bar dataKey="entradas" fill="#10b981" name="Entradas" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="saidas" fill="#ef4444" name="Saídas" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            )}
+              <div className="h-[350px] w-full">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dataCashFlow}>
+                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94A3B8' }} />
+                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94A3B8' }} />
+                       <Tooltip cursor={{ fill: '#F8FAFC' }} />
+                       <Bar dataKey="entradas" fill="#10B981" radius={[4, 4, 0, 0]} barSize={40} />
+                       <Bar dataKey="saidas" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={40} />
+                    </BarChart>
+                 </ResponsiveContainer>
+              </div>
+           </div>
+         )}
 
-            {activeTab === 'dre' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100">Demonstrativo de Resultados (Mês Atual)</h4>
-                        <div className="space-y-2">
-                            {dataDRE.map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                                        <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">{item.name}</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.value)}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl text-xs text-slate-500 dark:text-slate-400">
-                            <p>
-                                <i className="fas fa-info-circle mr-1"></i> 
-                                O Lucro Líquido representa 50% da Receita Bruta, o que está acima da média de mercado (35-40%). Parabéns!
-                            </p>
-                        </div>
-                    </div>
-                    <div className="h-72 w-full flex items-center justify-center min-h-[18rem]">
-                         <ResponsiveContainer width="100%" height="100%" minHeight={288}>
-                            <PieChart>
-                                <Pie
-                                    data={dataDRE}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={100}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {dataDRE.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            )}
 
-            {activeTab === 'commissions' && (
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100">Comissões a Pagar (Referência: Jan/2026)</h4>
-                        <button className="text-sm text-blue-600 dark:text-blue-400 font-bold hover:underline">
-                            <i className="fas fa-download mr-1"></i> Exportar Relatório
-                        </button>
-                    </div>
+         {activeTab === 'dre' && (
+           <div className="grid grid-cols-2 gap-16">
+              <div className="space-y-8">
+                 <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800 border-b border-slate-100 pb-4">Detalhamento Gerencial</h4>
+                 <div className="space-y-4">
+                    {dataDRE.map((item, idx) => (
+                       <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl group hover:bg-[#FF9F1C]/5 transition-all">
+                          <div className="flex items-center gap-4">
+                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
+                             <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{item.name}</span>
+                          </div>
+                          <span className="text-sm font-black text-[#020617] uppercase tracking-tight">
+                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.value)}
+                          </span>
+                       </div>
+                    ))}
+                 </div>
+              </div>
+              <div className="flex flex-col items-center justify-center">
+                 <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                       <PieChart>
+                          <Pie
+                             data={dataDRE}
+                             cx="50%"
+                             cy="50%"
+                             innerRadius={80}
+                             outerRadius={120}
+                             paddingAngle={5}
+                             dataKey="value"
+                          >
+                             {dataDRE.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                             ))}
+                          </Pie>
+                          <Tooltip />
+                       </PieChart>
+                    </ResponsiveContainer>
+                 </div>
+                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] mt-8">Distribuição de Receitas & Custos</p>
+              </div>
+           </div>
+         )}
 
-                    <div className="overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase">
-                                <tr>
-                                    <th className="px-6 py-4">Profissional</th>
-                                    <th className="px-6 py-4">Total Serviços</th>
-                                    <th className="px-6 py-4">% Comissão</th>
-                                    <th className="px-6 py-4">Valor a Pagar</th>
-                                    <th className="px-6 py-4">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                                {dataCommissions.map((comm, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/70 transition-colors">
-                                        <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">{comm.name}</td>
-                                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">R$ {Math.floor(comm.valor * 5).toLocaleString()}</td>
-                                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">20%</td>
-                                        <td className="px-6 py-4 font-bold text-green-600 dark:text-green-400">
-                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comm.valor)}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 rounded-full text-[10px] font-bold uppercase">
-                                                Pendente
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-        </div>
+         {activeTab === 'commissions' && (
+            <div className="space-y-8">
+               <div className="flex justify-between items-center border-b border-slate-100 pb-6">
+                  <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Folha de Comissões</h4>
+                  <span className="px-4 py-1 bg-slate-50 text-[10px] font-black text-slate-400 rounded-full uppercase tracking-widest">Referência: Janeiro 2026</span>
+               </div>
+               <div className="omie-table-container">
+                  <table className="omie-table">
+                     <thead>
+                        <tr>
+                           <th>Profissional</th>
+                           <th>Faturamento</th>
+                           <th>Taxa (%)</th>
+                           <th>Líquido a Pagar</th>
+                           <th className="text-right">Ações</th>
+                        </tr>
+                     </thead>
+                     <tbody>
+                        {dataCommissions.map((comm, idx) => (
+                           <tr key={idx} className="group">
+                              <td>
+                                 <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-[#020617] font-black text-[10px] uppercase">{comm.name.substring(0,2)}</div>
+                                    <span className="text-sm font-black text-[#020617] uppercase tracking-tight group-hover:text-[#FF9F1C] transition-colors">{comm.name}</span>
+                                 </div>
+                              </td>
+                              <td className="text-sm font-bold text-slate-500">R$ {Math.floor(comm.valor * 5).toLocaleString()}</td>
+                              <td className="text-sm font-bold text-slate-500">20%</td>
+                              <td className="text-lg font-black text-emerald-500 tracking-tighter uppercase">
+                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comm.valor)}
+                              </td>
+                              <td className="text-right">
+                                 <button className="omie-btn-primary !px-6 !py-2 !text-[9px] shadow-none">Pagar</button>
+                              </td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
+            </div>
+         )}
       </div>
     </div>
   );

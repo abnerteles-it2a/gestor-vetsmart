@@ -67,7 +67,7 @@ const AIConsultation: React.FC = () => {
       <header className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-            VetSmart AI Copilot <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-2 align-middle">BETA</span>
+            VetGrid AI Copilot <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-2 align-middle">BETA</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Assistente avançado para documentação clínica e diagnóstico por imagem.</p>
         </div>

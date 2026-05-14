@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'; // O proxy do Vite redirecionará para http://localhost:3001 em dev
@@ -12,7 +13,7 @@ const api = axios.create({
 
 // Interceptor para adicionar token JWT
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('vetpro_token');
+  const token = localStorage.getItem('vetgrid_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -25,8 +26,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       console.warn('Sessão expirada ou inválida. Deslogando usuário...');
-      localStorage.removeItem('vetpro_token');
-      localStorage.removeItem('vetpro_user');
+      localStorage.removeItem('vetgrid_token');
+      localStorage.removeItem('vetgrid_user');
       // Opcional: Redirecionar para login se estiver no browser
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login';
@@ -88,6 +89,12 @@ export const apiService = {
 
   // Plans
   getPlans: () => api.get('/plans'),
+
+  // Medications / Formulary
+  getMedications: (search?: string) => api.get('/medications', { params: { search } }),
+
+  // Global Search
+  globalSearch: (query: string) => api.get('/search', { params: { query } }),
 
   // AI Features
   getInventoryForecast: () => api.get('/ai/inventory-forecast'),

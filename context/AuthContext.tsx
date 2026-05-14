@@ -26,16 +26,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     // Check local storage for persisted session
-    const storedUser = localStorage.getItem('vetsmart_user');
-    const token = localStorage.getItem('vetsmart_token');
+    const storedUser = localStorage.getItem('vetgrid_user');
+    const token = localStorage.getItem('vetgrid_token');
     
     if (storedUser && token) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (e) {
         console.error("Failed to parse stored user", e);
-        localStorage.removeItem('vetsmart_user');
-        localStorage.removeItem('vetsmart_token');
+        localStorage.removeItem('vetgrid_user');
+        localStorage.removeItem('vetgrid_token');
       }
     }
     setIsLoading(false);
@@ -51,8 +51,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     setUser(userData);
-    localStorage.setItem('vetpro_user', JSON.stringify(userData));
-    localStorage.setItem('vetpro_token', token);
+    localStorage.setItem('vetgrid_user', JSON.stringify(userData));
+    localStorage.setItem('vetgrid_token', token);
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -81,8 +81,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('vetpro_user');
-    localStorage.removeItem('vetpro_token');
+    localStorage.removeItem('vetgrid_user');
+    localStorage.removeItem('vetgrid_token');
   };
 
   return (

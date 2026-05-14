@@ -29,5 +29,5 @@ export const openWhatsApp = (phone: string, text: string) => {
  * Generates a standard greeting message for the clinic
  */
 export const generateClinicMessage = (tutorName: string, content: string) => {
-    return `Olá ${tutorName}, aqui é da VetSmart! 🐾\n\n${content}`;
+    return `Olá ${tutorName}, aqui é da VetGrid! 🐾\n\n${content}`;
 };

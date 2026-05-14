@@ -100,7 +100,7 @@ const getToday = () => new Date().toISOString().split('T')[0];
 // --- IN-MEMORY MOCK STORE (with LocalStorage persistence) ---
 const loadFromStorage = (key: string, defaultData: any) => {
   try {
-    const stored = localStorage.getItem(`vetpro_${key}`);
+    const stored = localStorage.getItem(`vetgrid_${key}`);
     return stored ? JSON.parse(stored) : defaultData;
   } catch (e) {
     return defaultData;
@@ -109,7 +109,7 @@ const loadFromStorage = (key: string, defaultData: any) => {
 
 const saveToStorage = (key: string, data: any) => {
   try {
-    localStorage.setItem(`vetpro_${key}`, JSON.stringify(data));
+    localStorage.setItem(`vetgrid_${key}`, JSON.stringify(data));
   } catch (e) {
     console.error('Error saving to storage', e);
   }

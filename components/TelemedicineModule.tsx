@@ -3,6 +3,9 @@ import { openWhatsApp, generateClinicMessage } from '../utils/whatsappUtils';
 import { useToast } from '../context/ToastContext';
 import { useNavigation } from '../context/NavigationContext';
 import { apiService } from '../services/api';
+import { KpiCard } from './KpiCard';
+
+const MODULE_COLOR = '#00838F';
 
 const TelemedicineModule: React.FC = () => {
   const { addToast } = useToast();
@@ -11,300 +14,304 @@ const TelemedicineModule: React.FC = () => {
   const [isCallActive, setIsCallActive] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
-  const [stats, setStats] = useState({ today: 0, completed: 0, avgTime: '15 min' });
+  const [stats, setStats] = useState({ today: 0, completed: 0, avgTime: '20 min' });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if ((window as any).__setModuleBreadcrumb) {
+      (window as any).__setModuleBreadcrumb('Consultas do Dia');
+    }
     const loadAppointments = async () => {
       try {
         const response = await apiService.getAppointments();
         const data = response.data;
-        
-        // Filter for today's appointments that are consultations or returns
         const today = new Date().toISOString().split('T')[0];
-        
-        const todayAppointments = data.filter((a: any) => 
-            (a.type === 'consulta' || a.type === 'retorno') && 
-            a.status !== 'cancelado' &&
-            a.appointment_date && a.appointment_date.startsWith(today)
+        const todayAppointments = data.filter((a: any) =>
+          (a.type === 'consulta' || a.type === 'retorno') &&
+          a.status !== 'cancelado' &&
+          a.appointment_date?.startsWith(today)
         );
-
         const completedCount = data.filter((a: any) => a.status === 'atendido').length;
-
         const mapped = todayAppointments.map((a: any) => {
-            const dateObj = new Date(a.appointment_date);
-            const time = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            
-            return {
-              id: a.id,
-              petId: a.pet_id,
-              patientName: a.pet_name || 'Paciente',
-              tutorName: a.tutor_name || 'Tutor',
-              time: time,
-              date: 'Hoje',
-              status: a.status === 'agendado' ? 'pending' : 'confirmed',
-              type: a.type === 'consulta' ? 'Consulta' : 'Retorno',
-              image: a.species === 'Gato' 
-                ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150&h=150'
-                : 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=150&h=150',
-              symptoms: a.reason || 'Não informado',
-              roomName: `vetsmart-${(a.pet_name || 'pet').toLowerCase().replace(/\s+/g, '-')}-${a.id}`,
-              tutorPhone: a.tutor_phone || ''
-            };
-          });
-          
-        setAppointments(mapped);
-        setStats({
-            today: todayAppointments.length,
-            completed: completedCount,
-            avgTime: '20 min' // Estimated average
+          const dateObj = new Date(a.appointment_date);
+          return {
+            id: a.id, petId: a.pet_id,
+            patientName: a.pet_name || 'Paciente',
+            tutorName: a.tutor_name || 'Tutor',
+            time: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            status: a.status === 'agendado' ? 'pending' : 'confirmed',
+            type: a.type === 'consulta' ? 'Consulta' : 'Retorno',
+            image: a.species === 'Gato'
+              ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=80&h=80'
+              : 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=80&h=80',
+            symptoms: a.reason || 'Não informado',
+            roomName: `vetgrid-${(a.pet_name || 'pet').toLowerCase().replace(/\s+/g, '-')}-${a.id}`,
+            tutorPhone: a.tutor_phone || ''
+          };
         });
+        setAppointments(mapped);
+        setStats({ today: todayAppointments.length, completed: completedCount, avgTime: '20 min' });
       } catch (error) {
-        console.error("Error loading telemedicine appointments", error);
+        console.error('Error loading telemedicine appointments', error);
       } finally {
         setIsLoading(false);
       }
     };
-    
     loadAppointments();
   }, []);
 
-  const handleStartCall = (appointment: any) => {
-    setSelectedAppointment(appointment);
-    setIsCallActive(true);
+  const handleTabChange = (tab: 'appointments' | 'history') => {
+    setActiveTab(tab);
+    if ((window as any).__setModuleBreadcrumb) {
+      (window as any).__setModuleBreadcrumb(tab === 'appointments' ? 'Consultas do Dia' : 'Histórico');
+    }
   };
 
-  const handleEndCall = () => {
-    setIsCallActive(false);
-    setSelectedAppointment(null);
-  };
-
+  const handleStartCall = (apt: any) => { setSelectedAppointment(apt); setIsCallActive(true); };
+  const handleEndCall = () => { setIsCallActive(false); setSelectedAppointment(null); };
   const handleSendLink = (apt: any) => {
-      const link = `https://meet.jit.si/${apt.roomName}`;
-      const message = generateClinicMessage(
-          apt.tutorName, 
-          `Sua teleconsulta para o(a) ${apt.patientName} começará em breve.\n\nAcesse o link para entrar na sala de vídeo:\n${link}\n\nPor favor, esteja pronto 5 minutos antes.`
-      );
-      openWhatsApp(apt.tutorPhone, message);
+    const link = `https://meet.jit.si/${apt.roomName}`;
+    const message = generateClinicMessage(apt.tutorName,
+      `Sua teleconsulta para o(a) ${apt.patientName} começará em breve.\n\nAcesse:\n${link}\n\nEsteja pronto 5 min antes.`);
+    openWhatsApp(apt.tutorPhone, message);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <i className="fas fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
-          <p className="text-slate-500">Carregando consultas...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return (
+    <div className="p-10 text-[10px] font-black uppercase text-slate-400 tracking-widest animate-pulse">
+      Sincronizando it2a Telemedicina...
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">Telemedicina</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm xl:text-base">Consultas remotas e acompanhamento digital</p>
-        </div>
-        <div className="flex gap-3">
-          <button 
-            onClick={() => setActiveTab(activeTab === 'appointments' ? 'history' : 'appointments')}
-            className={`px-4 py-2 xl:px-6 xl:py-3 border rounded-xl transition-colors shadow-sm text-sm xl:text-base font-bold flex items-center gap-2 ${
-                activeTab === 'history' 
-                ? 'bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/40 dark:border-blue-700 dark:text-blue-300' 
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-            }`}
-          >
-            <i className={`fas ${activeTab === 'history' ? 'fa-calendar-check' : 'fa-history'}`}></i>
-            {activeTab === 'history' ? 'Ver Agendados' : 'Histórico'}
-          </button>
-          <button 
-            onClick={() => addToast('Funcionalidade de agendamento rápido em desenvolvimento. Utilize a Agenda principal.', 'info')}
-            className="px-4 py-2 xl:px-6 xl:py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 dark:shadow-none text-sm xl:text-base font-bold"
-          >
-            <i className="fas fa-plus mr-2"></i>
-            Nova Teleconsulta
-          </button>
-        </div>
-      </header>
+    <div className="flex flex-col gap-6 animate-portal-enter pb-10">
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-800 p-4 xl:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm group hover:border-indigo-200 transition-colors">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 xl:w-16 xl:h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl xl:text-3xl transition-transform group-hover:scale-110">
-              <i className="fas fa-video"></i>
-            </div>
-            <div>
-              <p className="text-sm xl:text-base text-slate-500 dark:text-slate-400">Agendadas Hoje</p>
-              <h3 className="text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">{stats.today}</h3>
-            </div>
-          </div>
+      {/* Module Header */}
+      <div className="flex justify-between items-end mb-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Consultas Remotas</h1>
+          <p className="text-2xl font-black text-[#020617] uppercase tracking-tight">Telemedicina Veterinária</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 p-4 xl:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm group hover:border-green-200 transition-colors">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 xl:w-16 xl:h-16 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center text-xl xl:text-3xl transition-transform group-hover:scale-110">
-              <i className="fas fa-check-circle"></i>
-            </div>
-            <div>
-              <p className="text-sm xl:text-base text-slate-500 dark:text-slate-400">Realizadas</p>
-              <h3 className="text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">{stats.completed}</h3>
-            </div>
+        <div className="flex gap-4">
+          {/* Sub-tab toggle */}
+          <div className="flex bg-white rounded-full p-1 border border-slate-100 shadow-sm self-center">
+            {([
+              { id: 'appointments', label: 'Hoje', icon: 'fa-video' },
+              { id: 'history', label: 'Histórico', icon: 'fa-history' },
+            ] as const).map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+                  activeTab === tab.id ? 'text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'
+                }`}
+                style={activeTab === tab.id ? { background: MODULE_COLOR } : {}}
+              >
+                <i className={`fas ${tab.icon} text-[10px]`}></i>
+                {tab.label}
+              </button>
+            ))}
           </div>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-4 xl:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm group hover:border-blue-200 transition-colors">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 xl:w-16 xl:h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl xl:text-3xl transition-transform group-hover:scale-110">
-              <i className="fas fa-clock"></i>
-            </div>
-            <div>
-              <p className="text-sm xl:text-base text-slate-500 dark:text-slate-400">Tempo Médio</p>
-              <h3 className="text-2xl xl:text-3xl font-bold text-slate-800 dark:text-slate-100">{stats.avgTime}</h3>
-            </div>
-          </div>
+          <button
+            onClick={() => addToast('Use a Agenda principal para agendar teleconsultas.', 'info')}
+            className="omie-btn-primary"
+          >
+            <i className="fas fa-plus mr-2"></i>Nova Teleconsulta
+          </button>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* KPI Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <KpiCard
+          title="Agendadas Hoje"
+          value={stats.today.toString()}
+          icon={<i className="fas fa-video"></i>}
+          subtext="Teleconsultas do dia"
+          subtextColor="text-slate-400"
+          color={MODULE_COLOR}
+        />
+        <KpiCard
+          title="Realizadas"
+          value={stats.completed.toString()}
+          icon={<i className="fas fa-check-circle"></i>}
+          subtext="Concluídas com sucesso"
+          subtextColor="text-emerald-500"
+          color={MODULE_COLOR}
+        />
+        <KpiCard
+          title="Tempo Médio"
+          value={stats.avgTime}
+          icon={<i className="fas fa-clock"></i>}
+          subtext="Por teleconsulta"
+          subtextColor="text-slate-400"
+          color={MODULE_COLOR}
+        />
+      </div>
+
+      {/* Main grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Appointments List */}
-        <div className="xl:col-span-2 space-y-4">
-          <h2 className="text-lg xl:text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Próximas Consultas</h2>
-          {appointments.length === 0 ? (
-             <div className="p-8 text-center bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                <i className="fas fa-calendar-check text-4xl text-slate-300 mb-3"></i>
-                <p className="text-slate-500">Nenhuma teleconsulta agendada para hoje.</p>
-             </div>
-          ) : appointments.map((apt) => (
-            <div key={apt.id} className="bg-white dark:bg-slate-800 p-4 xl:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <img src={apt.image} alt={apt.patientName} className="w-16 h-16 xl:w-20 xl:h-20 rounded-xl object-cover shadow-sm" />
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">{apt.patientName}</h3>
-                      <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                        {apt.type}
-                      </span>
+        {/* Appointments table */}
+        <div className="xl:col-span-2">
+          <div className="omie-table-container">
+            <div className="omie-card-header">
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-800">
+                {activeTab === 'appointments' ? 'Consultas do Dia' : 'Histórico de Consultas'}
+              </h3>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                {appointments.length} registros
+              </span>
+            </div>
+
+            {appointments.length === 0 ? (
+              <div className="p-20 text-center">
+                <i className="fas fa-video text-4xl text-slate-100 mb-4 block"></i>
+                <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest">
+                  Nenhuma teleconsulta agendada para hoje.
+                </span>
+              </div>
+            ) : (
+              <div className="bg-white divide-y divide-slate-50">
+                {appointments.map((apt) => (
+                  <div key={apt.id} className="p-6 hover:bg-slate-50/50 transition-all group flex items-center gap-6">
+                    {/* Avatar */}
+                    <div className="w-14 h-14 rounded-xl overflow-hidden border border-slate-100 shrink-0">
+                      <img src={apt.image} alt="" className="w-full h-full object-cover" />
                     </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Tutor: {apt.tutorName}</p>
-                    <div className="flex items-center gap-3 text-xs font-medium text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <i className="fas fa-calendar"></i> {apt.date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <i className="fas fa-clock"></i> {apt.time}
-                      </span>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <span
+                          className="text-[10px] font-black uppercase tracking-widest"
+                          style={{ color: MODULE_COLOR }}
+                        >{apt.type}</span>
+                        <div className="w-1 h-1 rounded-full bg-slate-200"></div>
+                        <h4 className="text-lg font-black text-[#020617] uppercase tracking-tight">{apt.patientName}</h4>
+                      </div>
+                      <div className="flex items-center gap-5">
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
+                          <i className="fas fa-user-circle text-[10px]"></i>{apt.tutorName}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
+                          <i className="fas fa-clock text-[10px]"></i>{apt.time}
+                        </span>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${apt.status === 'confirmed' ? 'text-emerald-500' : 'text-[#FF9F1C]'}`}>
+                          {apt.status === 'confirmed' ? '● Confirmado' : '○ Pendente'}
+                        </span>
+                      </div>
+                      {apt.symptoms && apt.symptoms !== 'Não informado' && (
+                        <p className="mt-1 text-[10px] font-bold text-slate-400 uppercase italic truncate max-w-sm">
+                          "{apt.symptoms}"
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {apt.petId && (
+                        <button
+                          onClick={() => navigateTo('patients', { petId: apt.petId, subTab: 'history' })}
+                          className="omie-btn-secondary !px-4 !py-2 !text-[9px]"
+                        >Prontuário</button>
+                      )}
+                      <button
+                        onClick={() => handleSendLink(apt)}
+                        className="w-9 h-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-500 hover:bg-emerald-100 transition-all"
+                        title="Enviar link WhatsApp"
+                      >
+                        <i className="fab fa-whatsapp text-sm"></i>
+                      </button>
+                      <button
+                        onClick={() => handleStartCall(apt)}
+                        className="omie-btn-primary !px-5 !py-2 !text-[9px]"
+                        style={{ background: MODULE_COLOR }}
+                      >
+                        <i className="fas fa-video mr-1"></i>Iniciar
+                      </button>
                     </div>
                   </div>
-                </div>
-                
-                <div className="w-full sm:w-auto flex flex-row sm:flex-col gap-2">
-                  {apt.petId && (
-                    <button 
-                        onClick={() => navigateTo('patients', { petId: apt.petId, subTab: 'history' })}
-                        className="flex-1 sm:flex-none px-4 py-2 xl:py-2.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                    >
-                        <i className="fas fa-file-medical"></i> Ver Prontuário
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => handleStartCall(apt)}
-                    className="flex-1 sm:flex-none px-4 py-2 xl:py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center justify-center gap-2 shadow-sm shadow-indigo-200 dark:shadow-none"
-                  >
-                    <i className="fas fa-video"></i> Iniciar Vídeo
-                  </button>
-                  <button 
-                    onClick={() => handleSendLink(apt)}
-                    className="flex-1 sm:flex-none px-4 py-2 xl:py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium flex items-center justify-center gap-2 shadow-sm shadow-green-200 dark:shadow-none"
-                  >
-                    <i className="fab fa-whatsapp"></i> Enviar Link
-                  </button>
-                </div>
+                ))}
               </div>
-              
-              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  <span className="font-medium text-slate-800 dark:text-slate-200">Sintomas:</span> {apt.symptoms}
-                </p>
-              </div>
-            </div>
-          ))}
+            )}
+          </div>
         </div>
 
-        {/* Quick Actions & Info */}
-        <div className="space-y-6">
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 text-white shadow-lg">
-            <h3 className="font-bold text-lg xl:text-xl mb-2">Sala de Espera Virtual</h3>
-            <p className="text-indigo-100 text-sm mb-4">
-              Compartilhe este link com seus pacientes para acesso direto à sala de espera.
-            </p>
-            <div className="flex items-center gap-2 bg-white/10 p-2 rounded-lg border border-white/20 mb-4">
-              <code className="text-xs flex-1 truncate">vetpro.com/dr-ricardo/sala</code>
-              <button className="text-indigo-200 hover:text-white transition-colors">
-                <i className="fas fa-copy"></i>
+        {/* Side Panel */}
+        <div className="flex flex-col gap-6">
+          {/* Virtual waiting room */}
+          <div className="omie-card bg-[#020617] border-none p-8 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 blur-[80px]" style={{ background: MODULE_COLOR + '30' }}></div>
+            <div className="relative z-10">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.3em] mb-2" style={{ color: MODULE_COLOR }}>Sala de Espera Virtual</h3>
+              <p className="text-[12px] font-bold text-slate-400 mb-6 leading-relaxed">
+                Compartilhe este link com seus pacientes para acesso direto.
+              </p>
+              <div className="flex items-center gap-2 bg-white/5 p-3 rounded-xl border border-white/10 mb-6">
+                <code className="text-[11px] flex-1 truncate text-slate-300">vetgrid.com/dr-ricardo/sala</code>
+                <button
+                  onClick={() => { navigator.clipboard.writeText('vetgrid.com/dr-ricardo/sala'); addToast('Link copiado!', 'success'); }}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  <i className="fas fa-copy text-xs"></i>
+                </button>
+              </div>
+              <button className="omie-btn-secondary !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 w-full">
+                Configurar Sala
               </button>
             </div>
-            <button className="w-full py-2 bg-white text-indigo-600 rounded-lg font-bold text-sm hover:bg-indigo-50 transition-colors">
-              Configurar Sala
-            </button>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 xl:p-6">
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-4">Equipamentos</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
-                <div className="flex items-center gap-2">
-                  <i className="fas fa-microphone"></i>
-                  <span className="text-sm font-medium">Microfone</span>
+          {/* Equipment check */}
+          <div className="omie-card">
+            <div className="omie-card-header">
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Verificação de Hardware</h3>
+            </div>
+            <div className="p-6 space-y-3">
+              {[
+                { label: 'Microfone', status: 'OK', ok: true, icon: 'fa-microphone' },
+                { label: 'Câmera', status: 'OK', ok: true, icon: 'fa-camera' },
+                { label: 'Conexão', status: 'Instável', ok: false, icon: 'fa-wifi' },
+              ].map(item => (
+                <div key={item.label} className={`flex items-center justify-between p-3 rounded-xl ${item.ok ? 'bg-emerald-50/50' : 'bg-[#FF9F1C]/5'}`}>
+                  <div className="flex items-center gap-3">
+                    <i className={`fas ${item.icon} text-sm ${item.ok ? 'text-emerald-500' : 'text-[#FF9F1C]'}`}></i>
+                    <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">{item.label}</span>
+                  </div>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${item.ok ? 'text-emerald-500' : 'text-[#FF9F1C]'}`}>
+                    {item.status}
+                  </span>
                 </div>
-                <span className="text-xs font-bold uppercase">OK</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
-                <div className="flex items-center gap-2">
-                  <i className="fas fa-camera"></i>
-                  <span className="text-sm font-medium">Câmera</span>
-                </div>
-                <span className="text-xs font-bold uppercase">OK</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400">
-                <div className="flex items-center gap-2">
-                  <i className="fas fa-wifi"></i>
-                  <span className="text-sm font-medium">Conexão</span>
-                </div>
-                <span className="text-xs font-bold uppercase">Instável</span>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Video Call Modal (Jitsi Integration) */}
+      {/* Video call overlay */}
       {isCallActive && selectedAppointment && (
-        <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
-          <header className="h-14 bg-slate-800 flex items-center justify-between px-4 border-b border-slate-700">
+        <div className="fixed inset-0 z-[2000] bg-[#020617] flex flex-col">
+          <header className="h-14 bg-black/50 flex items-center justify-between px-6 border-b border-white/5 backdrop-blur-md">
             <div className="flex items-center gap-4">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+              <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
               <div>
-                <h3 className="text-white font-bold text-sm">{selectedAppointment.patientName}</h3>
-                <p className="text-[10px] text-slate-400">{selectedAppointment.tutorName}</p>
+                <h3 className="text-white font-black text-sm uppercase">{selectedAppointment.patientName}</h3>
+                <p className="text-[10px] font-bold text-slate-500 uppercase">{selectedAppointment.tutorName}</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={handleEndCall}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors"
+              className="bg-rose-600 hover:bg-rose-700 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors"
             >
-              Encerrar Chamada
+              <i className="fas fa-phone-slash mr-2"></i>Encerrar
             </button>
           </header>
-          
-          <main className="flex-1 relative bg-black">
-             <iframe 
-                src={`https://meet.jit.si/${selectedAppointment.roomName}#config.prejoinPageEnabled=false&userInfo.displayName="VetSmart Veterinário"`}
-                allow="camera; microphone; fullscreen; display-capture; autoplay"
-                className="w-full h-full border-none"
-                title="Telemedicina VetSmart"
-              />
+          <main className="flex-1 bg-black">
+            <iframe
+              src={`https://meet.jit.si/${selectedAppointment.roomName}#config.prejoinPageEnabled=false&userInfo.displayName="VetGrid Veterinário"`}
+              allow="camera; microphone; fullscreen; display-capture; autoplay"
+              className="w-full h-full border-none"
+              title="Telemedicina VetGrid"
+            />
           </main>
         </div>
       )}
