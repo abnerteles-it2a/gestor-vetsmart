@@ -83,6 +83,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
     localStorage.removeItem('vetgrid_user');
     localStorage.removeItem('vetgrid_token');
+    // Force a complete page reload to clear all React state and memory
+    window.location.reload();
   };
 
   return (

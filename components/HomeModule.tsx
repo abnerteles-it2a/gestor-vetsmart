@@ -4,8 +4,16 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '../context/NavigationContext';
 
 const HomeModule: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { navigateTo } = useNavigation();
+
+  const handleModuleClick = (id: string) => {
+    if (id === 'logout') {
+      if (window.confirm('Deseja realmente sair?')) logout();
+    } else {
+      navigateTo(id);
+    }
+  };
 
   // VetGrid modules mapped to a vibrant mosaic grid
   const allModules = [
@@ -25,6 +33,7 @@ const HomeModule: React.FC = () => {
     { id: 'reports',         label: 'Relatórios',            icon: 'fa-chart-bar',        color: '#37474F', size: 'normal' },
     { id: 'tutor-app',       label: 'App Tutor',             icon: 'fa-mobile-alt',       color: '#020617', size: 'normal' },
     { id: 'calculator',      label: 'Calculadora',           icon: 'fa-calculator',       color: '#3949AB', size: 'normal' },
+    { id: 'logout',          label: 'Sair',                  icon: 'fa-power-off',        color: '#EF4444', size: 'normal' },
   ];
 
   return (
@@ -98,7 +107,7 @@ const HomeModule: React.FC = () => {
                   border: '1px solid rgba(255,255,255,0.1)',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }}
-                onClick={() => navigateTo(mod.id)}
+                onClick={() => handleModuleClick(mod.id)}
               >
                 <i className={`fas ${mod.icon} group-hover:scale-110 transition-transform`} style={{ fontSize: '28px', color: 'white', opacity: 0.9 }}></i>
                 <span style={{ 

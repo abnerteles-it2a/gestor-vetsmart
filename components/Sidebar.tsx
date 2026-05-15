@@ -26,16 +26,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, moduleColor 
     { id: 'calculator',   icon: 'fa-calculator',          label: 'Calc'  },
   ];
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     if (window.confirm('Deseja realmente sair do sistema?')) {
-      try {
-        setLogoutBusy(true);
-        await logout();
-      } catch (error) {
-        console.error("Logout failed", error);
-      } finally {
-        setLogoutBusy(false);
-      }
+      logout();
     }
   };
 
@@ -82,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, moduleColor 
         onClick={handleLogout}
         title="Sair"
       >
-        <i className={logoutBusy ? "fas fa-circle-notch fa-spin text-white" : "fas fa-power-off text-rose-500 text-[14px]"}></i>
+        <i className="fas fa-power-off text-rose-500 text-[14px]"></i>
       </div>
     </aside>
   );

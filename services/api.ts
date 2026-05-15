@@ -29,8 +29,8 @@ api.interceptors.response.use(
       localStorage.removeItem('vetgrid_token');
       localStorage.removeItem('vetgrid_user');
       // Opcional: Redirecionar para login se estiver no browser
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+        window.location.href = '/';
       }
     }
     return Promise.reject(error);

@@ -211,11 +211,15 @@ const MainLayout: React.FC = () => {
               <i className="fas fa-question-circle cursor-pointer hover:text-white transition-colors" />
             </div>
 
-            <div className="flex items-center gap-3 pl-6 border-l border-white/10">
-              <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest">
+            <div 
+              className="flex items-center gap-3 pl-6 border-l border-white/10 cursor-pointer group"
+              onClick={() => { if(window.confirm('Sair do sistema?')) logout(); }}
+              title="Clique para sair"
+            >
+              <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest group-hover:text-[#FF9F1C] transition-colors">
                 {user?.name?.split(' ')[0] || 'Abner'}
               </span>
-              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10 text-[10px]">
+              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10 text-[10px] group-hover:bg-[#FF9F1C] transition-all">
                 <i className="fas fa-user"></i>
               </div>
             </div>
