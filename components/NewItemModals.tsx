@@ -67,6 +67,7 @@ interface NewTutorModalProps {
 export const NewTutorModal: React.FC<NewTutorModalProps> = ({ isOpen, onClose, onSaved }) => {
   const { addToast } = useToast();
   const [name, setName] = useState('');
+  const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +76,7 @@ export const NewTutorModal: React.FC<NewTutorModalProps> = ({ isOpen, onClose, o
   useEffect(() => {
     if (isOpen) {
       setName('');
+      setCpf('');
       setPhone('');
       setEmail('');
       setError(null);
@@ -94,10 +96,15 @@ export const NewTutorModal: React.FC<NewTutorModalProps> = ({ isOpen, onClose, o
     setIsSubmitting(true);
 
     try {
+      // Geração automática de credenciais para o App Tutor
+      const appPassword = Math.floor(100000 + Math.random() * 900000).toString();
+
       const payload = {
         name,
+        cpf,
         phone,
         email,
+        appPassword, // Senha provisória gerada para o App Tutor
       };
 
       const response = await apiService.createTutor(payload);
@@ -107,7 +114,7 @@ export const NewTutorModal: React.FC<NewTutorModalProps> = ({ isOpen, onClose, o
         onSaved(savedTutor);
       }
 
-      addToast('Tutor cadastrado com sucesso!', 'success');
+      addToast(`Tutor cadastrado! Senha do App: ${appPassword}`, 'success');
       onClose();
     } catch (e) {
       addToast('Erro ao salvar. Tente novamente.', 'error');
@@ -132,6 +139,15 @@ export const NewTutorModal: React.FC<NewTutorModalProps> = ({ isOpen, onClose, o
             placeholder="Ex: João Silva"
             value={name}
             onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="omie-label">CPF (Login do App Tutor)</label>
+          <input
+            className="omie-input"
+            placeholder="000.000.000-00"
+            value={cpf}
+            onChange={(e) => setCpf(e.target.value)}
           />
         </div>
         <div>

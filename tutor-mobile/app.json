@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "tutor-mobile",
+    "slug": "tutor-mobile",
+    "owner": "abnerteles",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.abnerteles.tutormobile"
+    },
+    "android": {
+      "package": "com.abnerteles.tutormobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e00a51a3-7634-4bdc-a7d9-e5dd733eb39d"
+      }
+    }
+  }
+}

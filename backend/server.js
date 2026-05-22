@@ -295,6 +295,16 @@ async function ensureSchema() {
             );
         `);
 
+        // Update Tutors to include app_password
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tutors' AND column_name='app_password') THEN
+                    ALTER TABLE tutors ADD COLUMN app_password VARCHAR(255);
+                END IF;
+            END $$;
+        `);
+
         // Pets
         await client.query(`
             CREATE TABLE IF NOT EXISTS pets (
@@ -613,6 +623,68 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// TUTOR AUTH LOGIN (Para o App Mobile)
+app.post('/api/tutor/auth/login', async (req, res) => {
+    const { cpf, password } = req.body;
+    try {
+        if (!cpf || !password) {
+            return res.status(400).json({ error: 'CPF e senha são obrigatórios' });
+        }
+        const cleanCpf = String(cpf).replace(/\D/g, '');
+        
+        // Busca o tutor pelo CPF (limpo)
+        const tutorResult = await pool.query(
+            "SELECT * FROM tutors WHERE regexp_replace(cpf, '\\D', '', 'g') = $1",
+            [cleanCpf]
+        );
+        
+        if (tutorResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Tutor não encontrado' });
+        }
+        
+        const tutor = tutorResult.rows[0];
+        
+        // Verifica a senha do App
+        if (!tutor.app_password || String(tutor.app_password).trim() !== String(password).trim()) {
+            return res.status(401).json({ error: 'Senha incorreta' });
+        }
+        
+        // Busca os pets do tutor
+        const petsResult = await pool.query(
+            "SELECT * FROM pets WHERE tutor_id = $1",
+            [tutor.id]
+        );
+        
+        // Busca os agendamentos dos pets do tutor
+        const appointmentsResult = await pool.query(`
+            SELECT a.*, p.name as pet_name, p.species, u.name as vet_name
+            FROM appointments a
+            JOIN pets p ON a.pet_id = p.id
+            LEFT JOIN users u ON a.vet_id = u.id
+            WHERE p.tutor_id = $1
+            ORDER BY a.appointment_date ASC
+        `, [tutor.id]);
+        
+        const token = jwt.sign({ id: tutor.id, role: 'tutor' }, JWT_SECRET, { expiresIn: '30d' });
+        
+        res.json({
+            token,
+            tutor: {
+                id: tutor.id,
+                name: tutor.name,
+                email: tutor.email,
+                phone: tutor.phone,
+                cpf: tutor.cpf
+            },
+            pets: petsResult.rows,
+            appointments: appointmentsResult.rows
+        });
+    } catch (err) {
+        console.error('❌ Erro no login do tutor:', err);
+        res.status(500).json({ error: 'Erro interno no servidor' });
+    }
+});
+
 // TUTORS
 app.get('/api/tutors', async (req, res) => {
     try {
@@ -625,11 +697,11 @@ app.get('/api/tutors', async (req, res) => {
 });
 
 app.post('/api/tutors', async (req, res) => {
-    const { name, phone, email, cpf, address } = req.body;
+    const { name, phone, email, cpf, address, appPassword } = req.body;
     try {
         const result = await pool.query(
-            'INSERT INTO tutors (name, phone, email, cpf, address) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [name, phone, email, cpf, address]
+            'INSERT INTO tutors (name, phone, email, cpf, address, app_password) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [name, phone, email, cpf, address, appPassword || null]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {

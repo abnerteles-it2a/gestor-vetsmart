@@ -1,16 +1,9 @@
 # 📄 ESPECIFICAÇÕES DE DESIGN E MODERNIZAÇÃO (AJUSTES)
 
-> **STATUS ATUAL (19/01/2026):**
-> Este documento serve como referência de design e funcionalidades futuras.
-> Grande parte da **FASE 1 (UI/UX)** já foi implementada no Dashboard atual.
-> As funcionalidades das Fases 2, 3, 4 e 5 foram implementadas como **Previews Funcionais** (Modais, Telas de Demonstração, Simulação de IA) para validar o MVP.
-> Consulte `ROADMAP.md` para o status oficial de desenvolvimento.
-
----
 
 ROADMAP DETALHADO DE MODERNIZAÇÃO
 🎨 FASE 1: UI/UX REFINAMENTO (2-3 SEMANAS) 🔴 CRÍTICO
-1.1 Dashboard - Seguir Padrão Gestor Office
+1.1 Dashboard - Seguir Padrão OMIE
 jsx
 MELHORIAS IMEDIATAS:
 
@@ -745,7 +738,7 @@ O QUE JÁ ESTÁ EXCELENTE:
 ✅ UX limpa e funcional
 
 O QUE PRECISA:
-🎨 Refinar UI seguindo padrão Gestor Office (2-3 semanas)
+🎨 Refinar UI seguindo padrão OMIE (2-3 semanas)
 🏥 Adicionar Internação + Cirurgias (crítico para hospitais veterinários)
 📱 App para Tutores (diferencial competitivo)
 📹 Telemedicina (tendência pós-pandemia)

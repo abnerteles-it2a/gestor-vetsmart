@@ -33,6 +33,7 @@ const MainLayout: React.FC = () => {
   const [moduleBreadcrumb, setModuleBreadcrumb] = useState<string | null>(null);
   const [moduleAccentColor, setModuleAccentColor] = useState<string | null>(null);
   const [showSplash, setShowSplash] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const prevTabRef = React.useRef<string>('home');
 
   // Expose global setters so child modules can update breadcrumb & accent color
@@ -166,20 +167,44 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F4F7F9]">
+    <div
+      className="flex h-screen overflow-hidden"
+      style={{
+        /* Fixed spatial background — glass-sidebar and glass-topbar blur this photo.
+           Each product keeps its own image. Swap the URL here to change the spatial bg. */
+        backgroundImage: 'url("https://images.unsplash.com/photo-1623387641168-d9803ddd3f35?q=80&w=2070&auto=format&fit=crop")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
       
       {/* ===== OMIE-STYLE SIDEBAR (High Density) ===== */}
       {activeTab !== 'home' && (
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} moduleColor={getModuleColor()} />
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          moduleColor={getModuleColor()}
+          isExpanded={isSidebarExpanded}
+          setIsExpanded={setIsSidebarExpanded}
+        />
       )}
 
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div
+        className="flex flex-col flex-1 min-w-0 overflow-hidden"
+        style={{ '--module-color': moduleAccentColor ?? getModuleColor() } as React.CSSProperties}
+      >
         {/* ===== OMIE-STYLE TOPBAR (it2a Portal) ===== */}
         <header
           className="omie-topbar no-print transition-all duration-300"
           style={activeTab === 'home'
             ? { background: 'transparent', backdropFilter: 'none', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100 }
-            : { background: '#020617' }
+            : {
+                background: 'rgba(2, 6, 23, 0.82)',
+                backdropFilter: 'blur(20px) saturate(150%)',
+                WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+              }
           }
         >
           <div className="omie-topbar-brand">
@@ -246,8 +271,12 @@ const MainLayout: React.FC = () => {
 
         {/* ===== MAIN CONTENT AREA ===== */}
         <main
-          className="flex-1 overflow-y-auto flex flex-col bg-[#F4F7F9] relative"
-          style={{ '--module-color': moduleAccentColor ?? getModuleColor() } as React.CSSProperties}
+          className="flex-1 overflow-y-auto flex flex-col relative"
+          style={{
+            '--module-color': moduleAccentColor ?? getModuleColor(),
+            /* Solid content bg — keeps page readable over the spatial photo */
+            background: activeTab === 'home' ? 'transparent' : '#F4F7F9',
+          } as React.CSSProperties}
         >
           <div
             className={`flex-1 transition-all duration-300 ${activeTab === 'home' ? 'p-0' : 'p-8'}`}
